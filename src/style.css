@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #f7f9fc;
+}
+
+.chart-tooltip {
+  position: absolute;
+  background: #1f2937;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 0.5rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  font-size: 0.875rem;
+  z-index: 50;
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.5rem;
+  color: #1d4ed8;
+  z-index: 1000;
+}
+
+.loading-overlay.hidden {
+  display: none !important;
+}
+
+.expense-input-group {
+  display: grid;
+  grid-template-columns: 1fr 100px 30px;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.error-message {
+  background-color: #fee2e2;
+  color: #ef4444;
+  padding: 10px;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid #f87171;
+}
