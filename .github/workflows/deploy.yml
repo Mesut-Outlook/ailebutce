@@ -30,12 +30,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Create .env file
-        run: |
-          echo "VITE_APP_ID=${{ secrets.VITE_APP_ID }}" >> .env
-          echo "VITE_FIREBASE_CONFIG=${{ secrets.VITE_FIREBASE_CONFIG }}" >> .env
-
       - name: Build
+        env:
+          VITE_APP_ID: ${{ secrets.VITE_APP_ID }}
+          VITE_FIREBASE_CONFIG: ${{ secrets.VITE_FIREBASE_CONFIG }}
         run: npm run build
 
       - name: Setup Pages
