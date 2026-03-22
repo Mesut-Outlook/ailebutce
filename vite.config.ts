@@ -6,10 +6,15 @@ import os from 'os'
 
 const getLocalIP = () => {
   const interfaces = os.networkInterfaces();
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]) {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address;
+  if (interfaces) {
+    for (const name of Object.keys(interfaces)) {
+      const net = interfaces[name]
+      if (net) {
+        for (const iface of net) {
+          if (iface.family === 'IPv4' && !iface.internal) {
+            return iface.address;
+          }
+        }
       }
     }
   }
@@ -19,11 +24,12 @@ const getLocalIP = () => {
 // https://vite.dev/config/
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/ailebutce/',
   plugins: [{
     name: 'local-db-plugin',
     configureServer(server) {
       const ip = getLocalIP();
-      console.log(`\n  📱 MOBİL ERİŞİM İÇİN: http://${ip}:5173\n`);
+      console.log(`\n  📱 MOBİL ERİŞİM İÇİN: http://${ip}:3000\n`);
 
       server.middlewares.use((req, res, next) => {
         if (req.url?.startsWith('/api/db')) {
@@ -43,6 +49,28 @@ export default defineConfig({
               body += chunk.toString()
             })
             req.on('end', () => {
+              // 1. Create a backup if existing data exists
+              if (fs.existsSync(dbPath)) {
+                const historyDir = path.resolve(process.cwd(), 'history')
+                if (!fs.existsSync(historyDir)) {
+                  fs.mkdirSync(historyDir)
+                }
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+                const backupPath = path.resolve(historyDir, `db-${timestamp}.json`)
+                fs.copyFileSync(dbPath, backupPath)
+
+                // Optional: Keep only last 20 backups to save space
+                const files = fs.readdirSync(historyDir)
+                  .filter(f => f.startsWith('db-') && f.endsWith('.json'))
+                  .map(f => ({ name: f, time: fs.statSync(path.join(historyDir, f)).mtime.getTime() }))
+                  .sort((a, b) => b.time - a.time)
+
+                if (files.length > 20) {
+                  files.slice(20).forEach(f => fs.unlinkSync(path.join(historyDir, f.name)))
+                }
+              }
+
+              // 2. Write new data
               fs.writeFileSync(dbPath, body)
               res.end('OK')
             })
@@ -57,6 +85,7 @@ export default defineConfig({
   }],
   server: {
     host: '0.0.0.0',
+    port: 3000,
   },
   build: {
     // Split heavy deps so the main bundle stays below the 500 kB warning threshold

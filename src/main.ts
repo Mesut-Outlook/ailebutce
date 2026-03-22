@@ -22,6 +22,119 @@ declare const __app_id: string | undefined
 declare const __firebase_config: string | undefined
 declare const __initial_auth_token: string | undefined
 
+// --- CUSTOM UI COMPONENTS (NON-BLOCKING) ---
+// --- CUSTOM UI COMPONENTS (NON-BLOCKING) ---
+const showConfirm = (message: string, title = 'Emin misiniz?', options?: { cancel?: string, discard?: string, save?: string }): Promise<'cancel' | 'discard' | 'save'> => {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('custom-confirm-modal')
+    const titleEl = document.getElementById('confirm-modal-title')
+    const msgEl = document.getElementById('confirm-modal-message')
+    const cancelBtn = document.getElementById('confirm-modal-cancel-btn') as HTMLButtonElement
+    const discardBtn = document.getElementById('confirm-modal-discard-btn') as HTMLButtonElement
+    const saveBtn = document.getElementById('confirm-modal-save-btn') as HTMLButtonElement
+
+    if (!modal || !titleEl || !msgEl || !cancelBtn || !discardBtn || !saveBtn) {
+      const result = confirm(message)
+      resolve(result ? 'discard' : 'cancel')
+      return
+    }
+
+    titleEl.textContent = title
+    msgEl.textContent = message
+
+    // Set button labels if provided
+    cancelBtn.textContent = options?.cancel || 'İptal'
+    discardBtn.textContent = options?.discard || 'Kaydetmeden Çık'
+    saveBtn.textContent = options?.save || 'Kaydet ve Çık'
+
+    // Show/Hide Save button based on whether 'save' option is desired
+    if (options && options.save === '') {
+      saveBtn.classList.add('hidden')
+      discardBtn.classList.remove('sm:order-2')
+      discardBtn.classList.add('sm:order-3')
+    } else {
+      saveBtn.classList.remove('hidden')
+      discardBtn.classList.remove('sm:order-3')
+      discardBtn.classList.add('sm:order-2')
+    }
+
+    modal.classList.remove('hidden')
+
+    const cleanup = (result: 'cancel' | 'discard' | 'save') => {
+      modal.classList.add('hidden')
+      // Clean up event listeners by cloning
+      cancelBtn.replaceWith(cancelBtn.cloneNode(true))
+      discardBtn.replaceWith(discardBtn.cloneNode(true))
+      saveBtn.replaceWith(saveBtn.cloneNode(true))
+      resolve(result)
+    }
+
+    document.getElementById('confirm-modal-cancel-btn')?.addEventListener('click', () => cleanup('cancel'))
+    document.getElementById('confirm-modal-discard-btn')?.addEventListener('click', () => cleanup('discard'))
+    document.getElementById('confirm-modal-save-btn')?.addEventListener('click', () => cleanup('save'))
+  })
+}
+
+const showAlert = (message: string, title = 'Bildirim', type: 'info' | 'error' | 'success' = 'info'): Promise<void> => {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('custom-alert-modal')
+    const titleEl = document.getElementById('alert-modal-title')
+    const msgEl = document.getElementById('alert-modal-message')
+    const okBtn = document.getElementById('alert-modal-ok-btn')
+    const iconContainer = document.getElementById('alert-modal-icon-container')
+
+    if (!modal || !titleEl || !msgEl || !okBtn || !iconContainer) {
+      alert(message)
+      resolve()
+      return
+    }
+
+    titleEl.textContent = title
+    msgEl.textContent = message
+
+    // Icon logic
+    let iconColor = 'bg-indigo-100 text-indigo-600'
+    let iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
+
+    if (type === 'error') {
+      iconColor = 'bg-red-100 text-red-600'
+      iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>'
+    } else if (type === 'success') {
+      iconColor = 'bg-emerald-100 text-emerald-600'
+      iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>'
+    }
+
+    iconContainer.className = `p-2 rounded-full ${iconColor}`
+    iconContainer.innerHTML = iconSvg
+
+    modal.classList.remove('hidden')
+
+    const cleanup = () => {
+      modal.classList.add('hidden')
+      okBtn.replaceWith(okBtn.cloneNode(true))
+      resolve()
+    }
+
+    document.getElementById('alert-modal-ok-btn')?.addEventListener('click', cleanup)
+  })
+}
+
+const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+  const toast = document.createElement('div')
+  const bg = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-indigo-600'
+  toast.className = `fixed bottom-4 right-4 ${bg} text-white px-6 py-3 rounded-lg shadow-lg z-[300] font-bold animate-bounce flex items-center gap-2`
+
+  const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'
+  toast.innerHTML = `<span>${icon}</span> ${message}`
+
+  document.body.appendChild(toast)
+  setTimeout(() => {
+    toast.classList.replace('animate-bounce', 'opacity-0')
+    toast.style.transition = 'opacity 0.5s ease'
+    setTimeout(() => toast.remove(), 500)
+  }, 3000)
+}
+
 // --- ERROR HANDLING ---
 const showError = (message: string) => {
   const errorBox = document.getElementById('error-box')
@@ -29,12 +142,12 @@ const showError = (message: string) => {
     errorBox.textContent = message
     errorBox.classList.remove('hidden')
   } else {
-    alert(message)
+    showAlert(message, 'Hata', 'error')
   }
 }
 
 // --- TYPES ---
-type Currency = 'EUR' | 'TRY'
+type Currency = 'EUR' | 'TRY' | 'USD'
 type ExpenseType = 'FIXED' | 'VARIABLE'
 type SectionType = 'INCOME' | 'EXPENSE'
 type GroupType = 'HOLLANDA' | 'TURKIYE' | 'INCOME_ENTRIES'
@@ -56,6 +169,7 @@ interface BudgetRecord {
   id: string
   monthYear: string
   exchangeRate: number
+  usdRate: number
   totalTurkiyeTL: number
   totalHollandaEUR: number
   totalIncomeEUR: number
@@ -65,10 +179,7 @@ interface BudgetRecord {
   details: BudgetDetail[]
 }
 
-type ChartPoint = {
-  month: string
-  totalEUR: number
-}
+// type ChartPoint = { ... } // Removed unused type
 
 // --- EUR/TRY EXCHANGE RATE API ---
 interface ExchangeRateResponse {
@@ -78,19 +189,27 @@ interface ExchangeRateResponse {
   rates: { TRY: number }
 }
 
-const fetchEurTryRate = async (): Promise<{ rate: number; date: string } | null> => {
+const fetchExchangeRates = async (): Promise<{ eurRate: number; usdRate: number; date: string } | null> => {
   try {
-    const response = await fetch('https://api.frankfurter.dev/v1/latest?base=EUR&symbols=TRY')
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`)
+    const [eurRes, usdRes] = await Promise.all([
+      fetch('https://api.frankfurter.dev/v1/latest?base=EUR&symbols=TRY'),
+      fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=TRY')
+    ])
+
+    if (!eurRes.ok || !usdRes.ok) {
+      throw new Error(`API error: ${eurRes.status} / ${usdRes.status}`)
     }
-    const data: ExchangeRateResponse = await response.json()
+
+    const eurData: ExchangeRateResponse = await eurRes.json()
+    const usdData: ExchangeRateResponse = await usdRes.json()
+
     return {
-      rate: data.rates.TRY,
-      date: data.date
+      eurRate: eurData.rates.TRY,
+      usdRate: usdData.rates.TRY,
+      date: eurData.date
     }
   } catch (error) {
-    console.error('Failed to fetch EUR/TRY rate:', error)
+    console.error('Failed to fetch exchange rates:', error)
     return null
   }
 }
@@ -121,6 +240,7 @@ const migrateLegacyData = (legacyData: any): BudgetRecord => {
     id: legacyData.id,
     monthYear: legacyData.monthYear,
     exchangeRate: legacyData.exchangeRate,
+    usdRate: 0,
     totalTurkiyeTL: legacyData.totalTL,
     totalHollandaEUR: 0,
     totalIncomeEUR: 0,
@@ -182,18 +302,10 @@ class FileBudgetService implements BudgetService {
       // User asked "Make sure save button works". 
       // Let's add:
       console.log('Veriler başarıyla db.json dosyasına yazıldı.')
-      // Only show alert if it's likely a manual action? 
-      // To keep it simple and reassuring:
-      // setTimeout(() => alert('✅ Bütçe Kaydedildi!'), 10) 
-      // Use a custom toast via DOM?
-      const toast = document.createElement('div')
-      toast.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 font-bold animate-bounce'
-      toast.textContent = '✅ Bütçe Başarıyla Kaydedildi!'
-      document.body.appendChild(toast)
-      setTimeout(() => toast.remove(), 3000)
+      showToast('Bütçe Başarıyla Kaydedildi!', 'success')
     } catch (error) {
       console.error('Failed to save budgets', error)
-      alert('HATA: Veri dosyaya yazılamadı! Sunucu çalışıyor mu?')
+      showAlert('HATA: Veri dosyaya yazılamadı! Sunucu çalışıyor mu?', 'Hata', 'error')
     }
   }
 
@@ -357,9 +469,7 @@ const initialAuthToken = typeof __initial_auth_token !== 'undefined' && __initia
 
 let budgetService: BudgetService | null = null
 let allBudgetSummary: BudgetRecord[] = []
-let selectedMonthKey: string | null = null
-let unsubscribeBudgets: (() => void) | null = null
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// let unsubscribeBudgets: (() => void) | null = null // Removed unused variable
 let activeMonth = ''
 let activeYear = ''
 
@@ -406,9 +516,10 @@ const getLastBudget = (): BudgetRecord | undefined => {
 }
 
 const eurRateInput = getElement<HTMLInputElement>('eur-rate')
+const usdRateInput = getElement<HTMLInputElement>('usd-rate')
 
 // --- HELPER FUNCTIONS ---
-const formatCurrency = (amount: number, currency: 'TRY' | 'EUR') => {
+const formatCurrency = (amount: number, currency: Currency) => {
   const formatter = new Intl.NumberFormat('tr-TR', {
     style: 'currency',
     currency,
@@ -428,13 +539,23 @@ const onBudgetsUpdated = (budgets: BudgetRecord[]) => {
     const activeKey = `${activeMonth} ${activeYear}`
     const exists = allBudgetSummary.some(b => b.id === activeKey)
     if (!exists) {
-      // It was deleted. Reset to Empty View
-      document.getElementById('budget-ui-container')?.classList.add('hidden')
-      document.getElementById('active-budget-display')?.classList.add('hidden')
-      document.getElementById('empty-state-message')?.classList.remove('hidden')
-      document.getElementById('delete-budget-btn')?.classList.add('hidden')
-      activeMonth = ''
-      activeYear = ''
+      // If it doesn't exist in the summary, it might be a brand new month we just started creating
+      // but haven't saved yet. We should only reset if we are NOT in that "new month" state.
+      // We can check if the current UI container is visible and dirty or just initialized.
+      // For now, let's only reset if it's NOT a brand new intent.
+      // Actually, if it's NOT in allBudgetSummary, we should probably just let it be 
+      // until the user either saves it or navigates away.
+
+      // Let's check if the budget-ui-container is visible. If it is, and we haven't saved yet, 
+      // just ignore the "not exists" for now.
+      const uiContainer = document.getElementById('budget-ui-container')
+      const isVisible = uiContainer && !uiContainer.classList.contains('hidden')
+
+      if (!isVisible) {
+        // Only reset if the UI isn't even showing the month we think is active.
+        activeMonth = ''
+        activeYear = ''
+      }
     } else {
       // Reload the current budget to reflect changes
       loadFormData(activeMonth, activeYear)
@@ -466,6 +587,7 @@ const calculateEditorTotals = () => {
   let totalExpense = 0
   let totalTurkiyeTL = 0
   const eurRate = parseFloat(eurRateInput.value) || 0
+  const usdRate = parseFloat(usdRateInput.value) || 0
 
   // 1. Process Income Groups
   document.getElementById('income-groups-container')?.querySelectorAll('.expense-item').forEach(item => {
@@ -474,6 +596,7 @@ const calculateEditorTotals = () => {
     const currency = (item.querySelector('.expense-currency') as HTMLSelectElement).value as Currency
     let amountEUR = amount
     if (currency === 'TRY' && eurRate > 0) amountEUR = amount / eurRate
+    if (currency === 'USD' && usdRate > 0 && eurRate > 0) amountEUR = (amount * usdRate) / eurRate
 
     totalIncome += amountEUR
   })
@@ -497,6 +620,9 @@ const calculateEditorTotals = () => {
       if (currency === 'EUR') {
         amountEUR = amount
         if (groupType === 'TURKIYE' && eurRate > 0) totalTurkiyeTL += (amount * eurRate)
+      } else if (currency === 'USD') {
+        if (usdRate > 0 && eurRate > 0) amountEUR = (amount * usdRate) / eurRate
+        if (groupType === 'TURKIYE' && usdRate > 0) totalTurkiyeTL += (amount * usdRate)
       } else {
         // TRY
         if (groupType === 'TURKIYE') {
@@ -541,6 +667,29 @@ const calculateEditorTotals = () => {
   // Section Footers
   setText('display-total-turkiye', formatCurrency(totalTurkiyeTL, 'TRY'))
   setText('display-turkey-converted-footer', `(= ${formatCurrency(turkiyeEUR, 'EUR')})`)
+
+  // 4. Update individual Turkey items with EUR equivalents
+  document.querySelectorAll('[data-group-type="TURKIYE"] .expense-item').forEach(item => {
+    const amount = parseFloat((item.querySelector('.expense-amount') as HTMLInputElement).value) || 0
+    const currency = (item.querySelector('.expense-currency') as HTMLSelectElement).value as Currency
+    const convEl = item.querySelector('.expense-conversion') as HTMLElement
+    if (!convEl) return
+
+    if (amount > 0 && eurRate > 0) {
+      let amountEUR = 0
+      if (currency === 'TRY') amountEUR = amount / eurRate
+      else if (currency === 'USD' && usdRate > 0) amountEUR = (amount * usdRate) / eurRate
+      
+      if (amountEUR > 0) {
+        convEl.textContent = `≈ ${formatCurrency(amountEUR, 'EUR')}`
+        convEl.classList.remove('hidden')
+      } else {
+        convEl.classList.add('hidden')
+      }
+    } else {
+      convEl.classList.add('hidden')
+    }
+  })
 
   // Progress Bar Animation
   const bar = document.getElementById('balance-progress-bar')
@@ -804,10 +953,15 @@ const addGroup = (groupType: GroupType, name = 'Yeni Grup') => {
   createGroupElement(groupId, groupType, name)
 }
 
-const removeGroup = (groupId: string) => {
-  if (confirm('Grubu silmek istediğinize emin misiniz?')) {
-    document.getElementById(groupId)?.remove()
-    calculateEditorTotals()
+window.removeGroup = async (groupId: string) => {
+  const result = await showConfirm('Grubu silmek istediğinize emin misiniz?', 'Grubu Sil', { discard: 'Evet, Sil', save: '' })
+  if (result === 'discard') {
+    const groupEl = document.getElementById(groupId)
+    if (groupEl) {
+      groupEl.remove()
+      setDirty(true)
+      calculateEditorTotals()
+    }
   }
 }
 
@@ -854,6 +1008,7 @@ const addExpenseItem = (groupId: string, data?: Partial<BudgetDetail>) => {
       <select class="expense-currency block w-full rounded-md border-gray-300 shadow-sm p-1 border text-xs h-[38px] bg-gray-50">
         <option value="EUR" ${currentCurrency === 'EUR' ? 'selected' : ''}>EUR</option>
         <option value="TRY" ${currentCurrency === 'TRY' ? 'selected' : ''}>TRY</option>
+        <option value="USD" ${currentCurrency === 'USD' ? 'selected' : ''}>USD</option>
       </select>
     </div>
 
@@ -862,6 +1017,9 @@ const addExpenseItem = (groupId: string, data?: Partial<BudgetDetail>) => {
       <input type="checkbox" class="expense-fixed w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" ${isFixed ? 'checked' : ''} />
       <span class="text-xs text-gray-400 md:hidden lg:inline">Sabit</span>
     </div>
+
+    <!-- 5b. Conversion Display (Only for TURKIYE) -->
+    <div class="expense-conversion hidden text-[10px] font-mono font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100 shrink-0"></div>
 
     <!-- 6. Name Input (Full width on mobile, moves to bottom via order-last) -->
     <div class="w-full md:w-auto md:flex-grow order-last md:order-none mt-1 md:mt-0">
@@ -899,7 +1057,6 @@ const removeExpenseItem = (itemId: string) => {
 }
 
 window.addGroup = addGroup
-window.removeGroup = removeGroup
 window.addExpenseItem = addExpenseItem
 window.removeExpenseItem = removeExpenseItem
 window.toggleGroup = toggleGroup
@@ -928,6 +1085,96 @@ const toggleAllGroups = () => {
   })
 }
 window.toggleAllGroups = toggleAllGroups
+
+const saveCurrentBudget = async () => {
+  if (!budgetService) return
+
+  const month = activeMonth
+  const year = activeYear
+  if (!month || !year) return
+
+  const id = `${month} ${year}`
+  const eurRate = parseFloat(eurRateInput.value) || 0
+  const usdRate = parseFloat(usdRateInput.value) || 0
+
+  const details: BudgetDetail[] = []
+
+  // Scan DOM
+  document.querySelectorAll('.expense-item').forEach(item => {
+    const name = (item.querySelector('.expense-name') as HTMLInputElement).value
+    const amount = parseFloat((item.querySelector('.expense-amount') as HTMLInputElement).value) || 0
+    const currency = (item.querySelector('.expense-currency') as HTMLSelectElement).value as Currency
+    const isFixed = (item.querySelector('.expense-fixed') as HTMLInputElement)?.checked || false
+    const paymentDayInput = item.querySelector('.expense-day') as HTMLInputElement
+    const paymentDay = paymentDayInput && paymentDayInput.value ? parseInt(paymentDayInput.value) : undefined
+
+    const groupEl = item.closest('[data-group-type]')
+    const groupType = groupEl?.getAttribute('data-group-type') as GroupType || 'HOLLANDA'
+    const subGroupName = (groupEl?.querySelector('.group-name-input') as HTMLInputElement)?.value ||
+      (groupEl?.querySelector('input[type="text"]') as HTMLInputElement)?.value || 'Genel'
+
+    const groupColor = (groupEl?.querySelector('.group-color-picker') as HTMLInputElement)?.value
+
+    // Derive Section
+    let section: SectionType = 'EXPENSE'
+    if (groupType === 'INCOME_ENTRIES') section = 'INCOME'
+
+    details.push({
+      id: item.id,
+      name,
+      amount,
+      currency,
+      type: isFixed ? 'FIXED' : 'VARIABLE',
+      section,
+      group: groupType,
+      subGroup: subGroupName,
+      paymentDay,
+      color: groupColor
+    })
+  })
+
+  // Calc totals again for record
+  let totalIncome = 0
+  let totalExpense = 0
+  let totalTurkiyeTL = 0
+
+  details.forEach(d => {
+    let amountEUR = d.amount
+    if (d.currency === 'TRY' && eurRate > 0) amountEUR = d.amount / eurRate
+    if (d.currency === 'USD' && usdRate > 0 && eurRate > 0) amountEUR = (d.amount * usdRate) / eurRate
+
+    if (d.section === 'INCOME') totalIncome += amountEUR
+    else {
+      totalExpense += amountEUR
+      if (d.group === 'TURKIYE') {
+        if (d.currency === 'TRY') totalTurkiyeTL += d.amount
+        else if (d.currency === 'USD' && usdRate > 0) totalTurkiyeTL += (d.amount * usdRate)
+      }
+    }
+  })
+
+  const record: BudgetRecord = {
+    id,
+    monthYear: id,
+    exchangeRate: eurRate,
+    usdRate,
+    totalTurkiyeTL,
+    totalHollandaEUR: totalExpense - (totalTurkiyeTL / (eurRate || 1)), // Rough approx
+    totalIncomeEUR: totalIncome,
+    totalExpenseEUR: totalExpense,
+    transferAmountEUR: (eurRate > 0) ? (totalTurkiyeTL / eurRate) : 0,
+    grandTotalEUR: totalExpense,
+    details
+  }
+
+  try {
+    await budgetService.saveBudget(record)
+    setDirty(false)
+  } catch (error) {
+    console.error('Save error:', error)
+    showAlert('Kaydetme hatası', 'Hata', 'error')
+  }
+}
 
 // Wire up GLOBAL buttons (since we replaced HTML and lost inline onclicks for main buttons)
 // We need to wait for DOM? No, defer is not used but this is a module.
@@ -987,110 +1234,25 @@ const setupButtons = () => {
   document.getElementById('toggle-all-btn')?.addEventListener('click', toggleAllGroups)
 
   // SAVE BTN
-  document.getElementById('save-budget-btn')?.addEventListener('click', async () => {
-    if (!budgetService) return
-
-    const month = activeMonth
-    const year = activeYear
-    const id = `${month} ${year}`
-    const eurRate = parseFloat(eurRateInput.value) || 0
-
-    const details: BudgetDetail[] = []
-
-    // Scan DOM
-    document.querySelectorAll('.expense-item').forEach(item => {
-      const name = (item.querySelector('.expense-name') as HTMLInputElement).value
-      const amount = parseFloat((item.querySelector('.expense-amount') as HTMLInputElement).value) || 0
-      const currency = (item.querySelector('.expense-currency') as HTMLSelectElement).value as Currency
-      const isFixed = (item.querySelector('.expense-fixed') as HTMLInputElement)?.checked || false
-      const paymentDayInput = item.querySelector('.expense-day') as HTMLInputElement
-      const paymentDay = paymentDayInput && paymentDayInput.value ? parseInt(paymentDayInput.value) : undefined
-
-      const groupEl = item.closest('[data-group-type]')
-      const groupType = groupEl?.getAttribute('data-group-type') as GroupType || 'HOLLANDA'
-      const subGroupName = (groupEl?.querySelector('.group-name-input') as HTMLInputElement)?.value ||
-        (groupEl?.querySelector('input[type="text"]') as HTMLInputElement)?.value || 'Genel'
-
-      const groupColor = (groupEl?.querySelector('.group-color-picker') as HTMLInputElement)?.value
-
-      // Derive Section
-      let section: SectionType = 'EXPENSE'
-      if (groupType === 'INCOME_ENTRIES') section = 'INCOME'
-
-      details.push({
-        id: item.id,
-        name,
-        amount,
-        currency,
-        type: isFixed ? 'FIXED' : 'VARIABLE',
-        section,
-        group: groupType,
-        subGroup: subGroupName,
-        paymentDay,
-        color: groupColor
-      })
-    })
-
-    // Calc totals again for record
-    let totalIncome = 0
-    let totalExpense = 0
-    let totalTurkiyeTL = 0
-
-    details.forEach(d => {
-      let amountEUR = d.amount
-      if (d.currency === 'TRY' && eurRate > 0) amountEUR = d.amount / eurRate
-
-      if (d.section === 'INCOME') totalIncome += amountEUR
-      else {
-        totalExpense += amountEUR
-        if (d.group === 'TURKIYE' && d.currency === 'TRY') totalTurkiyeTL += d.amount
-      }
-    })
-
-    const record: BudgetRecord = {
-      id,
-      monthYear: id,
-      exchangeRate: eurRate,
-      totalTurkiyeTL,
-      totalHollandaEUR: totalExpense - (totalTurkiyeTL / (eurRate || 1)), // Rough approx
-      totalIncomeEUR: totalIncome,
-      totalExpenseEUR: totalExpense,
-      transferAmountEUR: (eurRate > 0) ? (totalTurkiyeTL / eurRate) : 0,
-      grandTotalEUR: totalExpense,
-      details
-    }
-
-    try {
-      await budgetService.saveBudget(record)
-      setDirty(false)
-    } catch (e) {
-      console.error(e)
-      alert('Kaydetme hatası')
-    }
-  })
+  document.getElementById('save-budget-btn')?.addEventListener('click', saveCurrentBudget)
 
   // CLOSE BTN - Go back to welcome screen
-  document.getElementById('close-budget-btn')?.addEventListener('click', () => {
+  document.getElementById('close-budget-btn')?.addEventListener('click', async () => {
     // Check if there are unsaved changes
-    const statusBadge = document.getElementById('header-status-badge')
-    const hasUnsavedChanges = statusBadge?.textContent?.includes('Değişiklik')
-
-    if (hasUnsavedChanges) {
-      if (!confirm('Kaydedilmemiş değişiklikler var. Yine de kapatmak istiyor musunuz?')) {
-        return
-      }
+    if (isDirty) {
+      const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Değişiklikleri Kaydet?')
+      if (result === 'cancel') return
+      if (result === 'save') await saveCurrentBudget()
     }
 
-    // Hide budget UI, show welcome screen
+    activeMonth = ''
+    activeYear = ''
     document.getElementById('budget-ui-container')?.classList.add('hidden')
     document.getElementById('active-budget-display')?.classList.add('hidden')
     document.getElementById('empty-state-message')?.classList.remove('hidden')
     document.getElementById('delete-budget-btn')?.classList.add('hidden')
-
-    // Reset active month/year
-    activeMonth = ''
-    activeYear = ''
     setDirty(false)
+    renderWelcomeBudgetList(allBudgetSummary)
   })
 
   // DELETE BTN - Delete current budget and go back
@@ -1100,12 +1262,12 @@ const setupButtons = () => {
     const budgetId = `${activeMonth} ${activeYear}`
 
     // İlk onay
-    if (!confirm(`"${budgetId}" ayını silmek istediğinize emin misiniz?`)) {
+    if (await showConfirm(`"${budgetId}" ayını silmek istediğinize emin misiniz?`, 'Ayı Sil', { discard: 'Evet, Sil', save: '' }) !== 'discard') {
       return
     }
 
     // İkinci onay
-    if (!confirm(`DİKKAT: Bu işlem geri alınamaz! "${budgetId}" bütçesini kalıcı olarak silmek istediğinize emin misiniz?`)) {
+    if (await showConfirm(`DİKKAT: Bu işlem geri alınamaz! "${budgetId}" bütçesini kalıcı olarak silmek istediğinize emin misiniz?`, 'Kalıcı Olarak Sil', { discard: 'Kalıcı Olarak Sil', save: '' }) !== 'discard') {
       return
     }
 
@@ -1123,15 +1285,10 @@ const setupButtons = () => {
       activeYear = ''
       setDirty(false)
 
-      // Show success toast
-      const toast = document.createElement('div')
-      toast.className = 'fixed bottom-4 right-4 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 font-bold'
-      toast.textContent = '🗑️ Ay Silindi!'
-      document.body.appendChild(toast)
-      setTimeout(() => toast.remove(), 3000)
+      showToast('Ay Silindi!', 'success')
     } catch (e) {
       console.error(e)
-      alert('Silme hatası!')
+      showAlert('Silme hatası!', 'Hata', 'error')
     }
   })
 }
@@ -1139,7 +1296,6 @@ const setupButtons = () => {
 // Call setupButtons at init
 // setTimeout(setupButtons, 1000) // Hacky wait for DOM? No, main.ts is module, runs after parse. DOM should be ready?
 // Safer to call in initializeAppService
-
 
 
 
@@ -1186,7 +1342,7 @@ const renderGroupsAndItems = (details: BudgetDetail[]) => {
   }
 
   // 2. Render Groups and Items
-  groupsToCreate.forEach((groupData, key) => {
+  groupsToCreate.forEach((groupData) => {
     const groupId = generateId()
     // Get color from first item?
     const color = groupData.color || ''
@@ -1194,7 +1350,7 @@ const renderGroupsAndItems = (details: BudgetDetail[]) => {
     createGroupElement(groupId, groupData.type, groupData.name, color)
 
     // Add items (clear initial default item first if any)
-    const itemsContainer = document.getElementById(`${groupId} -items`)
+    const itemsContainer = document.getElementById(`${groupId}-items`)
     if (itemsContainer) itemsContainer.innerHTML = ''
 
     groupData.items.forEach(item => {
@@ -1212,9 +1368,7 @@ const renderGroupsAndItems = (details: BudgetDetail[]) => {
   calculateEditorTotals()
 }
 
-const initNewBudget = (month: string, year: string) => {
-  const monthKey = `${month} ${year}`
-
+const initNewBudget = (_month: string, _year: string) => {
   // Clear current form
   document.getElementById('income-groups-container')!.innerHTML = ''
   document.getElementById('expense-groups-container')!.innerHTML = ''
@@ -1347,7 +1501,8 @@ const loadFormData = (specificMonth?: string, specificYear?: string) => {
 
   if (existingData) {
     // Load Existing
-    (document.getElementById('eur-rate') as HTMLInputElement).value = existingData.exchangeRate.toString() || ''
+    eurRateInput.value = existingData.exchangeRate?.toString() || ''
+    usdRateInput.value = existingData.usdRate?.toString() || ''
     renderGroupsAndItems(existingData.details)
     setDirty(false)
   } else {
@@ -1357,11 +1512,7 @@ const loadFormData = (specificMonth?: string, specificYear?: string) => {
 }
 
 // --- D3 CHART ---
-const getTooltip = () => {
-  const existing = document.querySelector<HTMLDivElement>('.chart-tooltip')
-  if (existing) return d3.select(existing)
-  return d3.select('body').append('div').attr('class', 'chart-tooltip')
-}
+// const getTooltip = () => { ... } // Removed unused helper
 
 // --- NEW REPORTS CHART FUNCTIONS ---
 
@@ -1495,7 +1646,7 @@ const renderCategoryBreakdown = (budgets: BudgetRecord[]) => {
   const pie = d3.pie<{ name: string, value: number }>().value(d => d.value)
   const arc = d3.arc<d3.PieArcDatum<{ name: string, value: number }>>().innerRadius(radius * 0.6).outerRadius(radius)
 
-  svg.selectAll('path').data(pie(data)).enter().append('path').attr('d', arc).attr('fill', (d, i) => color(i.toString()))
+  svg.selectAll('path').data(pie(data)).enter().append('path').attr('d', arc).attr('fill', (_, i) => color(i.toString()))
     .attr('stroke', 'white').style('stroke-width', '2px')
 
   // UI Legend
@@ -1644,14 +1795,21 @@ const renderWelcomeBudgetList = (budgets: BudgetRecord[]) => {
 const handleBudgetSelect = async (m: string, y: string) => {
   if (activeMonth === m && activeYear === y) return
 
+  const sel = document.getElementById('active-budget-select') as HTMLSelectElement
+
   if (isDirty) {
-    if (!confirm('Kaydedilmemiş değişiklikler var. Çıkmak istiyor musunuz?')) return
+    const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Değişiklikleri Kaydet?')
+    if (result === 'cancel') {
+      // Revert select UI to current active month
+      if (sel) sel.value = `${activeMonth} ${activeYear}`
+      return
+    }
+    if (result === 'save') await saveCurrentBudget()
   }
 
   activeMonth = m
   activeYear = y
   loadFormData(m, y)
-
 }
 
 
@@ -1659,23 +1817,23 @@ const handleBudgetSelect = async (m: string, y: string) => {
 
 window.deleteBudget = async (monthKey: string) => {
   if (!budgetService) return
-  if (!window.confirm(`${monthKey} bütçesini silmek istediğinizden emin misiniz?`)) {
+  if (await showConfirm(`${monthKey} bütçesini silmek istediğinizden emin misiniz?`, 'Bütçeyi Sil', { discard: 'Evet, Sil', save: '' }) !== 'discard') {
     return
   }
 
   try {
     await budgetService.deleteBudget(monthKey)
-    if (selectedMonthKey === monthKey) {
+    if (activeMonth + ' ' + activeYear === monthKey) {
       document.getElementById('budget-ui-container')?.classList.add('hidden')
-      selectedMonthKey = null
+      activeMonth = ''
+      activeYear = ''
     }
+    showToast('Bütçe silindi', 'success')
   } catch (error) {
     console.error('Bütçe silme hatası:', error)
-    window.alert(`Bütçe silinemedi: ${(error as Error).message}`)
+    showAlert(`Bütçe silinemedi: ${(error as Error).message}`, 'Hata', 'error')
   }
 }
-
-// --- BOOTSTRAP ---
 
 // --- BOOTSTRAP ---
 const initializeAppService = async () => {
@@ -1700,7 +1858,8 @@ const initializeAppService = async () => {
 
 
 
-    unsubscribeBudgets = budgetService.subscribe(onBudgetsUpdated)
+    // unsubscribeBudgets = budgetService.subscribe(onBudgetsUpdated)
+    budgetService.subscribe(onBudgetsUpdated)
 
     // --- NEW BUDGET MODAL LOGIC ---
     const modal = document.getElementById('new-budget-modal')
@@ -1735,17 +1894,21 @@ const initializeAppService = async () => {
       if (fetchRateBtnText) fetchRateBtnText.textContent = 'Yükleniyor...'
       fetchRateBtn.classList.add('opacity-50', 'pointer-events-none')
 
-      const result = await fetchEurTryRate()
+      const result = await fetchExchangeRates()
 
       if (result) {
-        if (modalRateInput) modalRateInput.value = result.rate.toFixed(4)
+        if (modalRateInput) modalRateInput.value = result.eurRate.toFixed(4)
+        const modalUsdRateInput = document.getElementById('modal-usd-rate') as HTMLInputElement
+        if (modalUsdRateInput) modalUsdRateInput.value = result.usdRate.toFixed(4)
         if (rateDateSpan) rateDateSpan.textContent = result.date
         rateSourceInfo?.classList.remove('hidden')
       } else {
-        alert('Kur bilgisi alınamadı. Lütfen manuel olarak girin veya tekrar deneyin.')
+        if (fetchRateBtnText) fetchRateBtnText.textContent = 'Kurları Getir'
+        if (fetchRateBtn) fetchRateBtn.removeAttribute('disabled')
+        showAlert('Kur bilgisi alınamadı. Lütfen manuel olarak girin veya tekrar deneyin.', 'Bilgi', 'info')
       }
 
-      if (fetchRateBtnText) fetchRateBtnText.textContent = 'Kuru Getir'
+      if (fetchRateBtnText) fetchRateBtnText.textContent = 'Kurları Getir'
       fetchRateBtn.classList.remove('opacity-50', 'pointer-events-none')
     })
 
@@ -1760,17 +1923,25 @@ const initializeAppService = async () => {
       modal?.classList.add('hidden')
     })
 
-    confirmBtn?.addEventListener('click', () => {
+    confirmBtn?.addEventListener('click', async () => {
       const m = mSelect.value
       const y = ySelect.value
       const modalExchangeRate = modalRateInput?.value ? parseFloat(modalRateInput.value) : 0
+      const modalUsdRate = (document.getElementById('modal-usd-rate') as HTMLInputElement)?.value ? parseFloat((document.getElementById('modal-usd-rate') as HTMLInputElement).value) : 0
 
-      handleBudgetSelect(m, y)
+      // If it doesn't exist, we'll auto-save it after initialization
+      const monthKey = `${m} ${y}`
+      const isNew = !allBudgetSummary.some(b => b.id === monthKey)
+
+      await handleBudgetSelect(m, y)
 
       // Set the exchange rate in the main form if provided
-      if (modalExchangeRate > 0) {
-        const eurRateInput = document.getElementById('eur-rate') as HTMLInputElement
-        if (eurRateInput) eurRateInput.value = modalExchangeRate.toFixed(4)
+      if (modalExchangeRate > 0) eurRateInput.value = modalExchangeRate.toFixed(4)
+      if (modalUsdRate > 0) usdRateInput.value = modalUsdRate.toFixed(4)
+
+      // If it was a new budget, save it immediately so it persists in the list/DB
+      if (isNew) {
+        await saveCurrentBudget()
       }
 
       modal?.classList.add('hidden')
@@ -1780,7 +1951,7 @@ const initializeAppService = async () => {
     setupButtons()
 
     // Active Budget Select Listener
-    document.getElementById('active-budget-select')?.addEventListener('change', (e) => {
+    document.getElementById('active-budget-select')?.addEventListener('change', async (e) => {
       const val = (e.target as HTMLSelectElement).value
       if (val) {
         const [m, y] = val.split(' ')
@@ -1788,10 +1959,12 @@ const initializeAppService = async () => {
       } else {
         // "Seçiniz..." was selected -> Go Home
         if (isDirty) {
-          if (!confirm('Kaydedilmemiş değişiklikler var. Çıkmak istiyor musunuz?')) {
+          const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Değişiklikleri Kaydet?')
+          if (result === 'cancel') {
             (e.target as HTMLSelectElement).value = `${activeMonth} ${activeYear}` // revert
             return
           }
+          if (result === 'save') await saveCurrentBudget()
         }
         activeMonth = ''
         activeYear = ''
@@ -1803,16 +1976,15 @@ const initializeAppService = async () => {
     })
 
     // Home / Logo Button Listener
-    document.getElementById('app-logo-btn')?.addEventListener('click', () => {
-      if (isDirty && !confirm('Kaydedilmemiş değişiklikler var. Anasayfaya dönmek istiyor musunuz?')) return
+    document.getElementById('app-logo-btn')?.addEventListener('click', async () => {
+      if (isDirty) {
+        const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Anasayfaya Dön')
+        if (result === 'cancel') return
+        if (result === 'save') await saveCurrentBudget()
+      }
 
       activeMonth = ''; activeYear = ''
       document.getElementById('active-budget-display')?.classList.add('hidden')
-
-      // Reset Select
-      const sel = document.getElementById('active-budget-select') as HTMLSelectElement
-      if (sel) sel.value = ""
-
       showPage('empty-state-message')
       renderWelcomeBudgetList(allBudgetSummary)
     })
@@ -1849,19 +2021,28 @@ const initializeAppService = async () => {
       }
     }
 
-    document.getElementById('nav-home-btn')?.addEventListener('click', () => {
-      if (isDirty && !confirm('Kaydedilmemiş değişiklikler var. Çıkmak istiyor musunuz?')) return
+    document.getElementById('nav-home-btn')?.addEventListener('click', async () => {
+      if (isDirty) {
+        const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Anasayfaya Dön')
+        if (result === 'cancel') return
+        if (result === 'save') await saveCurrentBudget()
+      }
       activeMonth = ''; activeYear = ''
       document.getElementById('active-budget-display')?.classList.add('hidden')
       showPage('empty-state-message')
       renderWelcomeBudgetList(allBudgetSummary)
     })
 
-    document.getElementById('nav-reports-btn')?.addEventListener('click', () => {
-      if (isDirty && !confirm('Kaydedilmemiş değişiklikler var. Çıkmak istiyor musunuz?')) return
+    document.getElementById('nav-reports-btn')?.addEventListener('click', async () => {
+      if (isDirty) {
+        const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Analiz Sayfasına Git')
+        if (result === 'cancel') return
+        if (result === 'save') await saveCurrentBudget()
+      }
       activeMonth = ''; activeYear = ''
       document.getElementById('active-budget-display')?.classList.add('hidden')
       showPage('reports-ui-container')
+      renderReports(allBudgetSummary)
     })
 
     // --- USAGE GUIDE MODAL LOGIC ---
@@ -1964,6 +2145,7 @@ const runAutoSeed = async () => {
     id: monthKey,
     monthYear: monthKey,
     exchangeRate: eurRate,
+    usdRate: 48.5, // Seed a value
     totalTurkiyeTL: 0,
     totalHollandaEUR: totalExpense,
     totalIncomeEUR: 0,

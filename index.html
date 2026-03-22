@@ -76,11 +76,19 @@
               </select>
             </div>
 
-            <div class="bg-indigo-800/50 rounded-lg px-3 py-1.5 border border-indigo-700/50 flex items-center gap-2">
-              <label class="text-xs text-indigo-300 font-medium">EUR/TRY:</label>
-              <input type="number" id="eur-rate" step="0.0001"
-                class="w-24 rounded bg-indigo-900/50 border-indigo-600/50 text-white placeholder-indigo-500 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 text-sm py-1 px-2 font-mono text-right"
-                placeholder="0.00" />
+            <div class="bg-indigo-800/50 rounded-lg px-2 py-1 border border-indigo-700/50 flex items-center gap-2">
+              <div class="flex items-center gap-1.5 border-r border-indigo-700/50 pr-2">
+                <label class="text-[10px] text-indigo-300 font-bold uppercase">EUR</label>
+                <input type="number" id="eur-rate" step="0.0001"
+                  class="w-16 rounded bg-indigo-900/50 border-indigo-600/50 text-white placeholder-indigo-500 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 text-xs py-0.5 px-1 font-mono text-right"
+                  placeholder="0.00" />
+              </div>
+              <div class="flex items-center gap-1.5">
+                <label class="text-[10px] text-indigo-300 font-bold uppercase">USD</label>
+                <input type="number" id="usd-rate" step="0.0001"
+                  class="w-16 rounded bg-indigo-900/50 border-indigo-600/50 text-white placeholder-indigo-500 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 text-xs py-0.5 px-1 font-mono text-right"
+                  placeholder="0.00" />
+              </div>
             </div>
           </div>
         </div>
@@ -344,7 +352,7 @@
                   <span class="text-orange-800 font-medium">Toplam (TL)</span>
                   <div class="text-right">
                     <span id="display-total-turkiye" class="font-bold text-orange-700 font-mono">₺0.00</span>
-                    <div class="text-[10px] text-orange-400" id="display-turkey-converted-footer">(= €0.00)</div>
+                    <div class="text-xs font-bold text-orange-600 mt-0.5" id="display-turkey-converted-footer">(= €0.00)</div>
                   </div>
                 </div>
               </section>
@@ -572,23 +580,33 @@
 
         <!-- EUR/TRY Exchange Rate -->
         <div class="pt-2 border-t border-gray-200">
-          <label class="block text-sm font-medium text-gray-700 mb-1">EUR/TRY Kuru</label>
-          <div class="flex gap-2">
-            <input type="number" id="modal-exchange-rate" step="0.0001"
-              class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2 px-3 border font-mono"
-              placeholder="Örn: 50.14" />
-            <button type="button" id="fetch-rate-btn"
-              class="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors flex items-center gap-1">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span id="fetch-rate-btn-text">Kuru Getir</span>
-            </button>
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">EUR/TRY</label>
+              <input type="number" id="modal-exchange-rate" step="0.0001"
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-3 border font-mono text-sm"
+                placeholder="0.00" />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">USD/TRY</label>
+              <input type="number" id="modal-usd-rate" step="0.0001"
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-3 border font-mono text-sm"
+                placeholder="0.00" />
+            </div>
           </div>
-          <p id="rate-source-info" class="text-xs text-gray-400 mt-1 hidden">
-            <span class="text-green-600">✓</span> ECB güncel kuru (<span id="rate-date"></span>)
+
+          <button type="button" id="fetch-rate-btn"
+            class="w-full px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span id="fetch-rate-btn-text">Kurları Getir</span>
+          </button>
+
+          <p id="rate-source-info" class="text-[10px] text-gray-400 mt-2 hidden text-center">
+            <span class="text-green-600">✓</span> ECB güncel kurları (<span id="rate-date"></span>)
           </p>
         </div>
       </div>
@@ -724,6 +742,53 @@
           class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg transition active:scale-95 shadow-lg shadow-indigo-100">
           Anladım, Başlayalım
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CUSTOM CONFIRMATION MODAL -->
+  <div id="custom-confirm-modal"
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden z-[200] flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full transform transition-all scale-100">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="p-2 bg-amber-100 rounded-full">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-gray-800" id="confirm-modal-title">Emin misiniz?</h3>
+      </div>
+      <p id="confirm-modal-message" class="text-gray-600 mb-8 leading-relaxed">Değişiklikleri kaydetmediniz. Ne yapmak
+        istersiniz?</p>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <button id="confirm-modal-cancel-btn"
+          class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors order-3 sm:order-1">İptal</button>
+        <button id="confirm-modal-discard-btn"
+          class="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors order-2 sm:order-2">Kaydetmeden
+          Çık</button>
+        <button id="confirm-modal-save-btn"
+          class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-md hover:shadow-lg transition-all transform active:scale-95 order-1 sm:order-3">Kaydet
+          ve Çık</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CUSTOM ALERT MODAL -->
+  <div id="custom-alert-modal"
+    class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden z-[200] flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-2xl p-8 max-w-sm w-full transform transition-all scale-100">
+      <div class="flex items-center gap-3 mb-4">
+        <div id="alert-modal-icon-container" class="p-2 bg-indigo-100 rounded-full">
+          <!-- Icon injected by JS -->
+        </div>
+        <h3 class="text-xl font-bold text-gray-800" id="alert-modal-title">Bildirim</h3>
+      </div>
+      <p id="alert-modal-message" class="text-gray-600 mb-8 leading-relaxed">İşlem başarıyla tamamlandı.</p>
+      <div class="flex justify-end">
+        <button id="alert-modal-ok-btn"
+          class="px-6 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-md hover:shadow-lg transition-all transform active:scale-95">Tamam</button>
       </div>
     </div>
   </div>
