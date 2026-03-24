@@ -2078,6 +2078,38 @@ const initializeAppService = async () => {
       if (!budgetService) return
       budgetService.subscribe(onBudgetsUpdated)
       showPage('page-landing')
+      
+      // AUTO-MIGRATE ON LOGIN (Request: "sen yukle")
+      silentCloudMigration()
+    }
+
+    async function silentCloudMigration() {
+      if (!(budgetService instanceof FirestoreBudgetService)) return
+      if (localStorage.getItem('db_json_migrated_final')) return
+      
+      try {
+        console.log('SESSİZ AKTARIM: Yerel db.json kontrol ediliyor...')
+        const res = await fetch('/api/db')
+        if (!res.ok) return
+        
+        const data: BudgetRecord[] = await res.json()
+        if (data && Array.isArray(data) && data.length > 0) {
+          console.log(`SESSİZ AKTARIM: ${data.length} aylık veri buluta kopyalanıyor...`)
+          showToast('Eski verileriniz arka planda buluta aktarılıyor...', 'info')
+          
+          for (const rec of data) {
+            const migrated = rec.totalTurkiyeTL !== undefined ? rec : migrateLegacyData(rec)
+            await budgetService.saveBudget(migrated)
+          }
+          
+          localStorage.setItem('db_json_migrated_final', 'true')
+          showToast('Eski verileriniz başarıyla aktarıldı!', 'success')
+          // Refresh lists
+          // budgetService will notify subscribers via snapshot-listener
+        }
+      } catch (err) {
+        console.warn('Sessiz aktarım başaramadı (Sunucu veya dosya hatası):', err)
+      }
     }
 
     // --- NEW BUDGET MODAL LOGIC ---
