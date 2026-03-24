@@ -4,8 +4,9 @@ import { initializeApp, setLogLevel } from 'firebase/app'
 import {
   getAuth,
   onAuthStateChanged,
-  signInAnonymously,
-  signInWithCustomToken,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
   type Auth,
 } from 'firebase/auth'
 import {
@@ -58,10 +59,10 @@ const showConfirm = (message: string, title = 'Emin misiniz?', options?: { cance
       discardBtn.classList.add('sm:order-2')
     }
 
-    modal.classList.remove('hidden')
+    modal.classList.add('show')
 
     const cleanup = (result: 'cancel' | 'discard' | 'save') => {
-      modal.classList.add('hidden')
+      modal.classList.remove('show')
       // Clean up event listeners by cloning
       cancelBtn.replaceWith(cancelBtn.cloneNode(true))
       discardBtn.replaceWith(discardBtn.cloneNode(true))
@@ -107,10 +108,10 @@ const showAlert = (message: string, title = 'Bildirim', type: 'info' | 'error' |
     iconContainer.className = `p-2 rounded-full ${iconColor}`
     iconContainer.innerHTML = iconSvg
 
-    modal.classList.remove('hidden')
+    modal.classList.add('show')
 
     const cleanup = () => {
-      modal.classList.add('hidden')
+      modal.classList.remove('show')
       okBtn.replaceWith(okBtn.cloneNode(true))
       resolve()
     }
@@ -367,22 +368,28 @@ class FirestoreBudgetService implements BudgetService {
     this.auth = getAuth(app)
     setLogLevel('silent')
 
-    if (this.initialToken) {
-      await signInWithCustomToken(this.auth, this.initialToken)
-    } else {
-      await signInAnonymously(this.auth)
-    }
-
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       onAuthStateChanged(this.auth, (user) => {
         if (user) {
           this.userId = user.uid
-          resolve()
         } else {
-          reject(new Error('User not authenticated'))
+          this.userId = null
         }
+        resolve()
       })
     })
+  }
+
+  async login(email: string, pass: string) {
+    await signInWithEmailAndPassword(this.auth, email, pass)
+  }
+
+  async register(email: string, pass: string) {
+    await createUserWithEmailAndPassword(this.auth, email, pass)
+  }
+
+  async logout() {
+    await signOut(this.auth)
   }
 
   getUserId(): string {
@@ -981,7 +988,7 @@ const addExpenseItem = (groupId: string, data?: Partial<BudgetDetail>) => {
   const row = document.createElement('div')
   // UPDATED: Responsive container
   // Mobile: Wrapped with border, spacing. Desktop: Single row, no border.
-  row.className = 'expense-item flex flex-wrap md:flex-nowrap gap-2 items-center p-2 bg-white rounded-lg border border-gray-100 shadow-sm md:shadow-none md:border-none md:p-0 md:bg-transparent mb-2 md:mb-0'
+  row.className = 'expense-item'
   row.id = itemId
 
   const isFixed = data?.type === 'FIXED'
@@ -989,23 +996,23 @@ const addExpenseItem = (groupId: string, data?: Partial<BudgetDetail>) => {
 
   row.innerHTML = `
     <!-- 1. Drag Handle -->
-    <div class="drag-handle cursor-grab active:cursor-grabbing text-gray-400 p-1 hover:text-gray-600 rounded hover:bg-gray-100 transition" draggable="true">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+    <div class="col-drag drag-handle" draggable="true">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
     </div>
 
     <!-- 2. Day Input -->
-    <div class="w-16 md:w-20 shrink-0">
-       <input type="number" min="1" max="31" class="expense-day block w-full rounded-md border-gray-300 shadow-sm p-2 border text-base md:text-sm text-center" placeholder="Gün" value="${data?.paymentDay || ''}" title="Ödeme Günü (1-31)" />
+    <div class="col-day">
+       <input type="number" min="1" max="31" class="expense-day input-base day-input" placeholder="Gün" value="${data?.paymentDay || ''}" title="Ödeme Günü" />
     </div>
 
     <!-- 3. Amount -->
-    <div class="w-24 md:w-32 shrink-0">
-      <input type="number" step="0.01" class="expense-amount block w-full rounded-md border-gray-300 shadow-sm p-2 border text-base md:text-sm" placeholder="Tutar" value="${data?.amount || ''}" required />
+    <div class="col-amount">
+      <input type="number" step="0.01" class="expense-amount input-base amount-input" placeholder="Tutar" value="${data?.amount || ''}" required />
     </div>
 
     <!-- 4. Currency -->
-    <div class="w-20 shrink-0">
-      <select class="expense-currency block w-full rounded-md border-gray-300 shadow-sm p-1 border text-xs h-[38px] bg-gray-50">
+    <div class="col-currency">
+      <select class="expense-currency input-base" style="padding: 0.4rem 0.2rem;">
         <option value="EUR" ${currentCurrency === 'EUR' ? 'selected' : ''}>EUR</option>
         <option value="TRY" ${currentCurrency === 'TRY' ? 'selected' : ''}>TRY</option>
         <option value="USD" ${currentCurrency === 'USD' ? 'selected' : ''}>USD</option>
@@ -1013,23 +1020,25 @@ const addExpenseItem = (groupId: string, data?: Partial<BudgetDetail>) => {
     </div>
 
     <!-- 5. Fixed Checkbox -->
-    <div class="flex items-center gap-1 shrink-0" title="${isIncome ? 'Sabit Gelir (Her ay otomatik eklenir)' : 'Sabit Gider (Her ay otomatik eklenir)'}">
-      <input type="checkbox" class="expense-fixed w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" ${isFixed ? 'checked' : ''} />
-      <span class="text-xs text-gray-400 md:hidden lg:inline">Sabit</span>
+    <div class="col-fixed" title="${isIncome ? 'Sabit Gelir (Her ay otomatik eklenir)' : 'Sabit Gider (Her ay otomatik eklenir)'}">
+      <input type="checkbox" class="expense-fixed" style="width: 14px; height: 14px; cursor: pointer;" ${isFixed ? 'checked' : ''} />
+      <span class="text-xs text-muted font-medium">Sabit</span>
     </div>
 
     <!-- 5b. Conversion Display (Only for TURKIYE) -->
-    <div class="expense-conversion hidden text-[10px] font-mono font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100 shrink-0"></div>
+    <div class="expense-conversion hidden" style="font-size: 0.625rem; font-weight: 700; color: var(--color-tr); background: rgba(249,115,22,0.1); padding: 0.125rem 0.375rem; border-radius: 4px; font-variant-numeric: tabular-nums; flex-shrink: 0;"></div>
 
-    <!-- 6. Name Input (Full width on mobile, moves to bottom via order-last) -->
-    <div class="w-full md:w-auto md:flex-grow order-last md:order-none mt-1 md:mt-0">
-      <input type="text" class="expense-name block w-full rounded-md border-gray-300 shadow-sm p-2 border text-base md:text-sm" placeholder="${isIncome ? 'Gelir Kaynağı' : 'Harcama Adı'}" value="${data?.name || ''}" required />
+    <!-- 6. Name Input -->
+    <div class="col-name">
+      <input type="text" class="expense-name name-input" placeholder="${isIncome ? 'Gelir Kaynağı' : 'Harcama Adı'}" value="${data?.name || ''}" required />
     </div>
 
     <!-- 7. Remove Button -->
-    <button onclick="removeExpenseItem('${itemId}')" class="text-red-400 hover:text-red-600 p-1 shrink-0">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-    </button>
+    <div class="col-remove">
+      <button onclick="removeExpenseItem('${itemId}')" class="delete-btn" title="Sil">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
+    </div>
   `
   itemsContainer.appendChild(row)
 
@@ -1176,9 +1185,49 @@ const saveCurrentBudget = async () => {
   }
 }
 
-// Wire up GLOBAL buttons (since we replaced HTML and lost inline onclicks for main buttons)
-// We need to wait for DOM? No, defer is not used but this is a module.
-// So we should run setupEventListeners once DOM is ready or immediately if at bottom.
+// --- NAVIGATION LOGIC ---
+const updateNavState = (activeId: string) => {
+  const ids = ['nav-home-btn', 'nav-budget-btn', 'nav-reports-btn', 'nav-profile-btn']
+  ids.forEach(id => {
+    const el = document.getElementById(id)
+    if (el) {
+      if (id === activeId) {
+        el.classList.add('active')
+        el.classList.remove('text-gray-400')
+      } else {
+        el.classList.remove('active')
+        el.classList.add('text-gray-400')
+      }
+    }
+  })
+}
+
+const showPage = (pageId: string) => {
+  const pages = ['page-landing', 'page-editor', 'page-reports', 'login-page']
+  pages.forEach(id => document.getElementById(id)?.classList.add('hidden'))
+  document.getElementById(pageId)?.classList.remove('hidden')
+
+  if (pageId === 'page-landing') updateNavState('nav-home-btn')
+  else if (pageId === 'page-editor') updateNavState('nav-budget-btn')
+  else if (pageId === 'page-reports') updateNavState('nav-reports-btn')
+  
+  // Also toggle desktop active states
+  const dHome = document.getElementById('nav-home-btn-d')
+  const dReports = document.getElementById('nav-reports-btn-d')
+  if (pageId === 'page-reports') {
+    dReports?.classList.replace('text-indigo-100', 'text-white')
+    dReports?.classList.add('bg-white/10')
+    dHome?.classList.replace('text-white', 'text-indigo-100')
+    dHome?.classList.remove('bg-white/10')
+  } else {
+    dHome?.classList.replace('text-indigo-100', 'text-white')
+    dHome?.classList.add('bg-white/10')
+    dReports?.classList.replace('text-white', 'text-indigo-100')
+    dReports?.classList.remove('bg-white/10')
+  }
+}
+
+// Wire up GLOBAL buttons
 const setupButtons = () => {
   // Income Privacy Toggle
   const toggleIncomeVisibility = (show: boolean) => {
@@ -1197,98 +1246,194 @@ const setupButtons = () => {
     }
   }
 
-  // Click on privacy card to show income
-  document.getElementById('income-privacy-card')?.addEventListener('click', () => {
-    toggleIncomeVisibility(true)
-  })
-
-  // Click on hide button to hide income
-  document.getElementById('hide-income-btn')?.addEventListener('click', () => {
-    toggleIncomeVisibility(false)
-  })
-
+  document.getElementById('income-privacy-card')?.addEventListener('click', () => toggleIncomeVisibility(true))
+  document.getElementById('hide-income-btn')?.addEventListener('click', () => toggleIncomeVisibility(false))
   document.getElementById('add-income-btn')?.addEventListener('click', () => addGroup('INCOME_ENTRIES', 'Gelirler'))
   document.getElementById('add-group-hollanda-btn')?.addEventListener('click', () => addGroup('HOLLANDA'))
-  document.getElementById('add-turkey-expense-btn')?.addEventListener('click', () => addGroup('TURKIYE', 'Genel'))
-
-  // Turkey expense section - separate buttons for item and group
+  document.getElementById('add-turkey-group-btn')?.addEventListener('click', () => addGroup('TURKIYE', 'Yeni Kategori'))
   document.getElementById('add-turkey-item-btn')?.addEventListener('click', () => {
-    // Find existing default group or create one
     let turkeyContainer = document.getElementById('turkiye-groups-container')
     let defaultGroup = turkeyContainer?.querySelector('[data-group-type="TURKIYE"]')
-
     if (!defaultGroup) {
-      // Create a default group first
       const groupId = generateId()
       createGroupElement(groupId, 'TURKIYE', 'Genel')
       defaultGroup = document.getElementById(groupId)
     }
-
-    // Add item to the default (first) group
-    if (defaultGroup) {
-      addExpenseItem(defaultGroup.id)
-    }
+    if (defaultGroup) addExpenseItem(defaultGroup.id)
   })
-  document.getElementById('add-turkey-group-btn')?.addEventListener('click', () => addGroup('TURKIYE', 'Yeni Kategori'))
 
   document.getElementById('toggle-all-btn')?.addEventListener('click', toggleAllGroups)
-
-  // SAVE BTN
   document.getElementById('save-budget-btn')?.addEventListener('click', saveCurrentBudget)
 
-  // CLOSE BTN - Go back to welcome screen
-  document.getElementById('close-budget-btn')?.addEventListener('click', async () => {
-    // Check if there are unsaved changes
+  const goHomeLogic = async () => {
     if (isDirty) {
-      const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Değişiklikleri Kaydet?')
+      const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Ana Sayfaya Dön')
       if (result === 'cancel') return
       if (result === 'save') await saveCurrentBudget()
     }
-
-    activeMonth = ''
-    activeYear = ''
-    document.getElementById('budget-ui-container')?.classList.add('hidden')
+    activeMonth = ''; activeYear = ''
     document.getElementById('active-budget-display')?.classList.add('hidden')
-    document.getElementById('empty-state-message')?.classList.remove('hidden')
-    document.getElementById('delete-budget-btn')?.classList.add('hidden')
+    showPage('page-landing')
     setDirty(false)
     renderWelcomeBudgetList(allBudgetSummary)
+  }
+
+  document.getElementById('close-budget-btn')?.addEventListener('click', goHomeLogic)
+  document.getElementById('nav-home-btn')?.addEventListener('click', goHomeLogic)
+  document.getElementById('nav-home-btn-d')?.addEventListener('click', goHomeLogic)
+  document.getElementById('app-logo-btn')?.addEventListener('click', goHomeLogic)
+
+  document.getElementById('nav-budget-btn')?.addEventListener('click', () => {
+    if (activeMonth && activeYear) {
+      showPage('page-editor')
+    } else {
+      const last = getLastBudget()
+      if (last) {
+        handleBudgetSelect(last.id.split(' ')[0], last.id.split(' ')[1])
+      } else {
+        document.getElementById('new-budget-modal')?.classList.add('show')
+      }
+    }
   })
 
-  // DELETE BTN - Delete current budget and go back
+  const goReportsLogic = async () => {
+    if (isDirty) {
+      const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Raporlara Git')
+      if (result === 'cancel') return
+      if (result === 'save') await saveCurrentBudget()
+    }
+    activeMonth = ''; activeYear = ''
+    document.getElementById('active-budget-display')?.classList.add('hidden')
+    showPage('page-reports')
+    renderReports(allBudgetSummary)
+  }
+
+  document.getElementById('nav-reports-btn')?.addEventListener('click', goReportsLogic)
+  document.getElementById('nav-reports-btn-d')?.addEventListener('click', goReportsLogic)
+
   document.getElementById('delete-budget-btn')?.addEventListener('click', async () => {
     if (!budgetService || !activeMonth || !activeYear) return
-
     const budgetId = `${activeMonth} ${activeYear}`
-
-    // İlk onay
-    if (await showConfirm(`"${budgetId}" ayını silmek istediğinize emin misiniz?`, 'Ayı Sil', { discard: 'Evet, Sil', save: '' }) !== 'discard') {
-      return
-    }
-
-    // İkinci onay
-    if (await showConfirm(`DİKKAT: Bu işlem geri alınamaz! "${budgetId}" bütçesini kalıcı olarak silmek istediğinize emin misiniz?`, 'Kalıcı Olarak Sil', { discard: 'Kalıcı Olarak Sil', save: '' }) !== 'discard') {
-      return
-    }
+    if (await showConfirm(`"${budgetId}" ayını silmek istediğinize emin misiniz?`, 'Ayı Sil', { discard: 'Evet, Sil', save: '' }) !== 'discard') return
+    if (await showConfirm(`DİKKAT: Bu işlem geri alınamaz! "${budgetId}" bütçesini kalıcı olarak silmek istediğinize emin misiniz?`, 'Kalıcı Olarak Sil', { discard: 'Kalıcı Olarak Sil', save: '' }) !== 'discard') return
 
     try {
       await budgetService.deleteBudget(budgetId)
-
-      // Hide budget UI, show welcome screen
-      document.getElementById('budget-ui-container')?.classList.add('hidden')
+      showPage('page-landing')
       document.getElementById('active-budget-display')?.classList.add('hidden')
-      document.getElementById('empty-state-message')?.classList.remove('hidden')
-      document.getElementById('delete-budget-btn')?.classList.add('hidden')
-
-      // Reset active month/year
-      activeMonth = ''
-      activeYear = ''
+      activeMonth = ''; activeYear = ''
       setDirty(false)
-
       showToast('Ay Silindi!', 'success')
     } catch (e) {
       console.error(e)
       showAlert('Silme hatası!', 'Hata', 'error')
+    }
+  })
+
+  // Auth / Profile bindings
+  document.getElementById('nav-profile-btn')?.addEventListener('click', () => {
+      document.getElementById('user-menu-modal')?.classList.add('show')
+  })
+  document.getElementById('user-menu-btn')?.addEventListener('click', () => {
+      document.getElementById('user-menu-modal')?.classList.add('show')
+  })
+  document.getElementById('close-user-menu')?.addEventListener('click', () => {
+      document.getElementById('user-menu-modal')?.classList.remove('show')
+  })
+  
+  // Active Budget Select Listener
+  document.getElementById('active-budget-select')?.addEventListener('change', async (e) => {
+    const val = (e.target as HTMLSelectElement).value
+    if (val) {
+      const [m, y] = val.split(' ')
+      handleBudgetSelect(m, y)
+    } else {
+      if (isDirty) {
+        const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Değişiklikleri Kaydet?')
+        if (result === 'cancel') {
+          (e.target as HTMLSelectElement).value = `${activeMonth} ${activeYear}`
+          return
+        }
+        if (result === 'save') await saveCurrentBudget()
+      }
+      activeMonth = ''
+      activeYear = ''
+      document.getElementById('budget-ui-container')?.classList.add('hidden')
+      document.getElementById('active-budget-display')?.classList.add('hidden')
+      document.getElementById('empty-state-message')?.classList.remove('hidden')
+      renderWelcomeBudgetList(allBudgetSummary)
+    }
+  })
+
+  // Attach Dirty Listeners globally to container
+  document.getElementById('budget-ui-container')?.addEventListener('input', (e) => {
+    if ((e.target as HTMLElement).matches('input, select')) {
+      setDirty(true)
+    }
+  })
+
+  // Migrate Data - Trigger File Picker
+  document.getElementById('migrate-data-btn')?.addEventListener('click', () => {
+    if (!(budgetService instanceof FirestoreBudgetService) || !budgetService.getUserId()) {
+      return showError('Sadece bulut (giriş yapılmış) modunda veri aktarımı yapılabilir.')
+    }
+    document.getElementById('migrate-file-input')?.click()
+  })
+
+  // Migrate Data - Handle File Upload
+  document.getElementById('migrate-file-input')?.addEventListener('change', async (e) => {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (!file) return
+
+    const btn = document.getElementById('migrate-data-btn') as HTMLButtonElement
+    const origText = btn.innerHTML
+    if (btn) btn.innerHTML = 'Okunuyor <span class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-left:8px;border-top-color:var(--color-primary)"></span>'
+    
+    const reader = new FileReader()
+    reader.onload = async (event) => {
+      try {
+        if (btn) btn.innerHTML = 'Aktarılıyor <span class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-left:8px;border-top-color:var(--color-primary)"></span>'
+        const content = event.target?.result as string
+        const data: BudgetRecord[] = JSON.parse(content)
+        
+        if (data && Array.isArray(data) && data.length > 0) {
+          let loaded = 0
+          for (const rec of data) {
+            const migrated = rec.totalTurkiyeTL !== undefined ? rec : migrateLegacyData(rec)
+            await budgetService.saveBudget(migrated)
+            loaded++
+          }
+          if (btn) btn.innerHTML = 'Aktarıldı ✓'
+          showToast(`${loaded} aylık eski veri veritabanınıza kopyalandı! Sayfa yenileniyor...`, 'success')
+          
+          setTimeout(() => {
+            document.getElementById('user-menu-modal')?.classList.remove('show')
+            window.location.reload()
+          }, 2000)
+        } else {
+          showError('Seçilen dosya geçerli bir bütçe verisi içermiyor.')
+          if (btn) btn.innerHTML = origText
+        }
+      } catch(err) {
+        showError('Hata: Dosya işlenemedi. ' + (err as Error).message)
+        if (btn) btn.innerHTML = origText
+      }
+      
+      // Reset input so they can pick the same file again if it failed
+      (e.target as HTMLInputElement).value = ''
+    }
+    reader.readAsText(file)
+  })
+
+  // Logout
+  document.getElementById('logout-btn')?.addEventListener('click', async () => {
+    if (budgetService instanceof FirestoreBudgetService) {
+      try {
+        await budgetService.logout()
+        window.location.reload()
+      } catch (e) {
+        showError('Çıkış yapılamadı.')
+      }
     }
   })
 }
@@ -1487,10 +1632,15 @@ const loadFormData = (specificMonth?: string, specificYear?: string) => {
   }
 
   // Show Form & Top Nav Budget Display
-  document.getElementById('budget-ui-container')?.classList.remove('hidden')
+  showPage('page-editor')
   document.getElementById('active-budget-display')?.classList.remove('hidden')
-  document.getElementById('empty-state-message')?.classList.add('hidden')
-  document.getElementById('delete-budget-btn')?.classList.remove('hidden')
+  document.getElementById('editor-period-title')!.textContent = monthKey
+  
+  // Set explicit conversion display in header
+  if (existingData) {
+    document.getElementById('editor-eur-rate')!.textContent = formatCurrency(existingData.exchangeRate, 'TRY')
+    document.getElementById('editor-usd-rate')!.textContent = formatCurrency(existingData.usdRate, 'TRY')
+  }
 
   // Clear containers
   const containers = ['income-groups-container', 'expense-groups-container', 'turkiye-groups-container']
@@ -1739,11 +1889,29 @@ const renderAverageBudgetTable = (budgets: BudgetRecord[]) => {
 
 const renderWelcomeBudgetList = (budgets: BudgetRecord[]) => {
   const container = document.getElementById('welcome-budget-list')
+  const countSpan = document.getElementById('budget-count')
+  
+  if (countSpan) countSpan.textContent = `${budgets.length} adet`
   if (!container) return
   container.innerHTML = ''
-  if (budgets.length === 0) return
 
-  // Sort Newest First
+  if (budgets.length === 0) {
+    container.innerHTML = `
+      <div class="text-center p-8 bg-white border border-dashed border-gray-300 rounded-xl mt-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+        <p class="text-gray-500 font-medium">Henüz kayıtlı bütçeniz yok.</p>
+        <p class="text-xs text-gray-400 mt-1">Yeni Ay oluşturarak başlayın.</p>
+      </div>
+    `
+    // Zero out hero
+    const setText = (id: string, val: string) => { const el = document.getElementById(id); if (el) el.textContent = val; }
+    setText('landing-income', '—')
+    setText('landing-expense', '—')
+    setText('landing-balance', '—')
+    setText('landing-rate', '—')
+    return
+  }
+
   const sorted = [...budgets].sort((a, b) => {
     const [ma, ya] = a.id.split(' ')
     const [mb, yb] = b.id.split(' ')
@@ -1751,43 +1919,38 @@ const renderWelcomeBudgetList = (budgets: BudgetRecord[]) => {
     return months.indexOf(mb) - months.indexOf(ma)
   })
 
-  sorted.forEach(budget => {
-    const btn = document.createElement('button')
-    btn.className = "flex flex-col items-start p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:border-indigo-300 hover:bg-indigo-50 transition-all group text-left"
+  // Update Hero Stats with latest budget
+  const setText = (id: string, val: string) => { const el = document.getElementById(id); if (el) el.textContent = val; }
+  setText('landing-income', formatCurrency(sorted[0].totalIncomeEUR, 'EUR'))
+  setText('landing-expense', formatCurrency(sorted[0].totalExpenseEUR, 'EUR'))
+  const bal = sorted[0].totalIncomeEUR - sorted[0].totalExpenseEUR;
+  setText('landing-balance', formatCurrency(bal, 'EUR'))
+  setText('landing-rate', sorted[0].exchangeRate > 0 ? formatCurrency(sorted[0].exchangeRate, 'TRY') : '—')
 
-    // Parse ID for display
+  sorted.forEach(budget => {
+    const div = document.createElement('div')
+    div.className = 'budget-card shadow-sm hover:shadow-md transition-all'
+    
     const [m, y] = budget.id.split(' ')
     const balance = budget.totalIncomeEUR - budget.totalExpenseEUR
 
-    btn.innerHTML = `
-      <div class="flex justify-between w-full items-center mb-2">
-        <span class="font-bold text-gray-800 text-lg group-hover:text-indigo-700">${m} ${y}</span>
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300 group-hover:text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-        </svg>
+    div.innerHTML = `
+      <div class="info">
+        <h3 class="text-gray-800 font-bold">${m} ${y}</h3>
+        <p class="text-sm text-gray-500">Gider: ${formatCurrency(budget.totalExpenseEUR, 'EUR')} ${budget.totalTurkiyeTL > 0 ? `(TR: ${formatCurrency(budget.totalTurkiyeTL, 'TRY')})` : ''}</p>
       </div>
-      <div class="text-xs text-gray-500 font-mono space-y-1 w-full">
-        <div class="flex justify-between">
-           <span class="text-green-600">Gelir:</span>
-           <span class="font-bold text-green-600">${formatCurrency(budget.totalIncomeEUR, 'EUR')}</span>
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="amount ${balance < 0 ? 'text-red-500' : 'text-green-600'} font-bold">
+          ${formatCurrency(balance, 'EUR')}
         </div>
-        <div class="flex justify-between">
-           <span class="text-red-500">Gider:</span>
-           <span class="font-bold text-red-500">${formatCurrency(budget.totalExpenseEUR, 'EUR')}</span>
-        </div>
-        <div class="flex justify-between border-t pt-1 mt-1">
-           <span class="font-medium">Kalan:</span>
-           <span class="${balance < 0 ? 'text-red-500' : 'text-indigo-600'} font-bold">
-             ${formatCurrency(balance, 'EUR')}
-           </span>
-        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-400"><path d="M9 18l6-6-6-6"/></svg>
       </div>
     `
-    btn.addEventListener('click', () => {
+    div.addEventListener('click', () => {
       handleBudgetSelect(m, y)
     })
 
-    container.appendChild(btn)
+    container.appendChild(div)
   })
 }
 
@@ -1850,16 +2013,72 @@ const initializeAppService = async () => {
 
     await budgetService.init()
 
-    userIdDisplay.textContent = budgetService.getUserId()
-    appContainer.classList.remove('hidden')
     loadingOverlay.classList.add('hidden')
-    loadingOverlay.classList.add('hidden')
-    // populateMonthSelect() -- REMOVED
+    
+    // Auth Flow Logic
+    const isCloudMode = budgetService instanceof FirestoreBudgetService
+    
+    if (isCloudMode && !budgetService.getUserId()) {
+      // Need to login
+      document.getElementById('login-page')?.classList.remove('hidden')
+      document.getElementById('app-container')?.classList.add('hidden')
 
+      const loginForm = document.getElementById('login-form') as HTMLFormElement
+      loginForm?.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const btn = document.getElementById('login-btn') as HTMLButtonElement
+        const email = (document.getElementById('login-email') as HTMLInputElement).value
+        const pass = (document.getElementById('login-password') as HTMLInputElement).value
+        const err = document.getElementById('login-error')
 
+        try {
+          if (btn) btn.textContent = 'Giriş Yapılıyor...'
+          if (err) err.textContent = ''
+          
+          await (budgetService as FirestoreBudgetService).login(email, pass)
+          
+          // Logged in successfully
+          document.getElementById('login-page')?.classList.add('hidden')
+          document.getElementById('app-container')?.classList.remove('hidden')
+          userIdDisplay.textContent = budgetService!.getUserId()
+          document.getElementById('profile-user-id')!.textContent = budgetService!.getUserId()
+          
+          finishAppInit()
+        } catch (error: any) {
+          if (btn) btn.textContent = 'Giriş Yap'
+          if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+             // Create it!
+             try {
+                if (err) err.textContent = 'Hesap bulunamadı, oluşturuluyor...'
+                await (budgetService as FirestoreBudgetService).register(email, pass)
+                // Created successfully
+                document.getElementById('login-page')?.classList.add('hidden')
+                document.getElementById('app-container')?.classList.remove('hidden')
+                userIdDisplay.textContent = budgetService!.getUserId()
+                document.getElementById('profile-user-id')!.textContent = budgetService!.getUserId()
+                finishAppInit()
+             } catch (regError: any) {
+                if (btn) btn.textContent = 'Giriş Yap'
+                if (err) err.textContent = 'Hata: ' + regError.message
+             }
+          } else {
+             if (err) err.textContent = 'Hata: ' + error.message
+          }
+        }
+      })
+    } else {
+      // Local mode or already authenticated
+      document.getElementById('app-container')?.classList.remove('hidden')
+      userIdDisplay.textContent = budgetService.getUserId()
+      document.getElementById('profile-user-id')!.textContent = budgetService.getUserId()
+      finishAppInit()
+    }
 
-    // unsubscribeBudgets = budgetService.subscribe(onBudgetsUpdated)
-    budgetService.subscribe(onBudgetsUpdated)
+    function finishAppInit() {
+      if (!budgetService) return
+      budgetService.subscribe(onBudgetsUpdated)
+      showPage('page-landing')
+    }
 
     // --- NEW BUDGET MODAL LOGIC ---
     const modal = document.getElementById('new-budget-modal')
@@ -1950,127 +2169,53 @@ const initializeAppService = async () => {
     // Setup global listeners
     setupButtons()
 
-    // Active Budget Select Listener
-    document.getElementById('active-budget-select')?.addEventListener('change', async (e) => {
-      const val = (e.target as HTMLSelectElement).value
-      if (val) {
-        const [m, y] = val.split(' ')
-        handleBudgetSelect(m, y)
-      } else {
-        // "Seçiniz..." was selected -> Go Home
-        if (isDirty) {
-          const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Değişiklikleri Kaydet?')
-          if (result === 'cancel') {
-            (e.target as HTMLSelectElement).value = `${activeMonth} ${activeYear}` // revert
-            return
-          }
-          if (result === 'save') await saveCurrentBudget()
-        }
-        activeMonth = ''
-        activeYear = ''
-        document.getElementById('budget-ui-container')?.classList.add('hidden')
-        document.getElementById('active-budget-display')?.classList.add('hidden')
-        document.getElementById('empty-state-message')?.classList.remove('hidden')
-        renderWelcomeBudgetList(allBudgetSummary)
-      }
-    })
-
-    // Home / Logo Button Listener
-    document.getElementById('app-logo-btn')?.addEventListener('click', async () => {
-      if (isDirty) {
-        const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Anasayfaya Dön')
-        if (result === 'cancel') return
-        if (result === 'save') await saveCurrentBudget()
-      }
-
-      activeMonth = ''; activeYear = ''
-      document.getElementById('active-budget-display')?.classList.add('hidden')
-      showPage('empty-state-message')
-      renderWelcomeBudgetList(allBudgetSummary)
-    })
-
-    // Attach Dirty Listeners globally to container
-    document.getElementById('budget-ui-container')?.addEventListener('input', (e) => {
-      if ((e.target as HTMLElement).matches('input, select')) {
-        setDirty(true)
-      }
-    })
-
-    // --- NAVIGATION LOGIC ---
-    const showPage = (pageId: string) => {
-      const pages = ['empty-state-message', 'budget-ui-container', 'reports-ui-container']
-      pages.forEach(id => document.getElementById(id)?.classList.add('hidden'))
-      document.getElementById(pageId)?.classList.remove('hidden')
-
-      // Update Nav Buttons appearance
-      const homeBtn = document.getElementById('nav-home-btn')
-      const reportsBtn = document.getElementById('nav-reports-btn')
-
-      if (pageId === 'reports-ui-container') {
-        reportsBtn?.classList.replace('text-indigo-100', 'text-white')
-        reportsBtn?.classList.add('bg-white/10')
-        homeBtn?.classList.replace('text-white', 'text-indigo-100')
-        homeBtn?.classList.remove('bg-white/10')
-
-        renderReports(allBudgetSummary)
-      } else {
-        homeBtn?.classList.replace('text-indigo-100', 'text-white')
-        homeBtn?.classList.add('bg-white/10')
-        reportsBtn?.classList.replace('text-white', 'text-indigo-100')
-        reportsBtn?.classList.remove('bg-white/10')
-      }
-    }
-
-    document.getElementById('nav-home-btn')?.addEventListener('click', async () => {
-      if (isDirty) {
-        const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Anasayfaya Dön')
-        if (result === 'cancel') return
-        if (result === 'save') await saveCurrentBudget()
-      }
-      activeMonth = ''; activeYear = ''
-      document.getElementById('active-budget-display')?.classList.add('hidden')
-      showPage('empty-state-message')
-      renderWelcomeBudgetList(allBudgetSummary)
-    })
-
-    document.getElementById('nav-reports-btn')?.addEventListener('click', async () => {
-      if (isDirty) {
-        const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Analiz Sayfasına Git')
-        if (result === 'cancel') return
-        if (result === 'save') await saveCurrentBudget()
-      }
-      activeMonth = ''; activeYear = ''
-      document.getElementById('active-budget-display')?.classList.add('hidden')
-      showPage('reports-ui-container')
-      renderReports(allBudgetSummary)
-    })
-
-    // --- USAGE GUIDE MODAL LOGIC ---
     const guideModal = document.getElementById('usage-guide-modal')
     const showGuideBtn = document.getElementById('show-guide-btn')
+    const qaGuideBtn = document.getElementById('qa-guide')
     const closeGuideBtn = document.getElementById('close-guide-btn')
     const closeGuideFooterBtn = document.getElementById('close-guide-footer-btn')
 
-    showGuideBtn?.addEventListener('click', () => {
-      guideModal?.classList.remove('hidden')
-    })
+    const showGuide = () => guideModal?.classList.add('show')
+    const hideGuide = () => guideModal?.classList.remove('show')
 
-    const hideGuide = () => {
-      guideModal?.classList.add('hidden')
-    }
-
+    showGuideBtn?.addEventListener('click', showGuide)
+    qaGuideBtn?.addEventListener('click', showGuide)
     closeGuideBtn?.addEventListener('click', hideGuide)
     closeGuideFooterBtn?.addEventListener('click', hideGuide)
 
-    // Close on click outside
-    guideModal?.addEventListener('click', (e) => {
-      if (e.target === guideModal) hideGuide()
+    // Landing Page Quick Actions
+    document.getElementById('qa-new-month')?.addEventListener('click', () => {
+      document.getElementById('new-budget-modal')?.classList.add('show')
+    })
+    document.getElementById('qa-last-budget')?.addEventListener('click', () => {
+      const last = getLastBudget()
+      if (last) handleBudgetSelect(last.id.split(' ')[0], last.id.split(' ')[1])
+    })
+    document.getElementById('qa-reports')?.addEventListener('click', () => {
+      showPage('page-reports')
+      renderReports(allBudgetSummary)
+    })
+
+    // General app level listeners
+    document.getElementById('new-budget-modal')?.addEventListener('click', (e) => {
+      if (e.target === document.getElementById('new-budget-modal')) {
+        document.getElementById('new-budget-modal')?.classList.remove('show')
+      }
+    })
+    document.getElementById('user-menu-modal')?.addEventListener('click', (e) => {
+      if (e.target === document.getElementById('user-menu-modal')) {
+        document.getElementById('user-menu-modal')?.classList.remove('show')
+      }
     })
 
     // Escape key support
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !guideModal?.classList.contains('hidden')) {
+      if (e.key === 'Escape') {
         hideGuide()
+        document.getElementById('new-budget-modal')?.classList.remove('show')
+        document.getElementById('custom-confirm-modal')?.classList.remove('show')
+        document.getElementById('custom-alert-modal')?.classList.remove('show')
+        document.getElementById('user-menu-modal')?.classList.remove('show')
       }
     })
 
@@ -2079,7 +2224,7 @@ const initializeAppService = async () => {
     showError(`Uygulama başlatılamadı: ${(error as Error).message}`)
     loadingOverlay.classList.add('hidden')
   }
-}
+} // <--- End of initializeAppService
 
 
 
@@ -2088,77 +2233,116 @@ const initializeAppService = async () => {
 
 // --- ONE-TIME AUTO SEED ---
 const runAutoSeed = async () => {
-  // SAFER CHECK: If we have ANY data loaded from file (or firebase), DO NOT SEED.
   if (allBudgetSummary.length > 0) {
     console.log("Data detected. Skipping auto-seed.")
     return
   }
-
-  // Also keep the LS check as double safety for first run
-  if (localStorage.getItem('seeded_dec_2025_v1')) return;
-
-  console.log("Auto-seeding Aralık 2025 data...");
+  if (localStorage.getItem('seeded_4months_v2')) return;
   if (!budgetService) return;
 
-  // 1. Clear Data
+  console.log("Checking for local db.json data to migrate...");
+  try {
+    const res = await fetch('/api/db');
+    if (res.ok) {
+      const dbData: BudgetRecord[] = await res.json();
+      if (dbData && dbData.length > 0) {
+        console.log(`Found ${dbData.length} months of real data in db.json! Auto-migrating to Firebase...`);
+        for (const record of dbData) {
+          // ensure legacy fields are calculated correctly just in case
+          const migrated = record.totalTurkiyeTL !== undefined ? record : migrateLegacyData(record);
+          await budgetService.saveBudget(migrated);
+        }
+        localStorage.setItem('seeded_4months_v2', 'true');
+        
+        // Target the last month in their DB
+        const lastRecord = dbData[dbData.length - 1];
+        const parts = lastRecord.monthYear.split(' ');
+        if (parts.length === 2) {
+            handleBudgetSelect(parts[0], parts[1]);
+        }
+        showToast('Eski verileriniz (db.json) başarıyla buluta kopyalandı!', 'success');
+        return;
+      }
+    }
+  } catch (err) {
+    console.log("Could not load /api/db for migration, falling back to mock seed.", err);
+  }
+
+  console.log("Local DB empty or not found. Auto-seeding 4 months of mock data...");
   localStorage.removeItem('offline_budgets');
 
-  // 2. Prepare Data
-  const monthKey = "Aralık 2025";
-  const eurRate = 51.50; // Approximate rate
-
-  const details: BudgetDetail[] = [
-    // KREDİ & KİRA
-    { id: 'seed-1', name: 'ABN AMRO BANK NV', amount: 1388.17, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Kredi', section: 'EXPENSE', paymentDay: 1 },
-    { id: 'seed-6', name: 'MANDELAA (Aidat)', amount: 139.11, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Kredi', section: 'EXPENSE', paymentDay: 25 }, // Aidat fits here or Fatura? Let's keep strict to request or logical.
-
-    // SİGORTA
-    { id: 'seed-3', name: 'CZ (Sağlık Sigortası)', amount: 310.30, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Sigorta', section: 'EXPENSE', paymentDay: 28 },
-    { id: 'seed-10', name: 'ZILVEREN KRUIS (Sağlık Sigortası)', amount: 288.95, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Sigorta', section: 'EXPENSE', paymentDay: 28 },
-    { id: 'seed-2', name: 'REAAL LEVENSVERZEKERING', amount: 28.07, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Sigorta', section: 'EXPENSE', paymentDay: 28 },
-    { id: 'seed-12', name: 'OHRA SCHADEVERZEKERINGEN', amount: 22.17, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Sigorta', section: 'EXPENSE', paymentDay: 28 },
-    { id: 'seed-13', name: 'VOOGD VOOGD VERZEKERING', amount: 22.46, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Sigorta', section: 'EXPENSE', paymentDay: 28 },
-
-    // FATURA
-    { id: 'seed-5', name: 'KPN B.V. (İnternet)', amount: 67.50, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Fatura', section: 'EXPENSE', paymentDay: 21 },
-    { id: 'seed-8', name: 'VATTENFALL (Elektrik/Gaz)', amount: 146.00, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Fatura', section: 'EXPENSE', paymentDay: 23 },
-    { id: 'seed-9', name: 'WATERNET (Su)', amount: 23.00, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Fatura', section: 'EXPENSE', paymentDay: 16 },
-    { id: 'seed-14', name: 'WATERSCHAP AMSTEL (Su Vergisi)', amount: 65.51, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Fatura', section: 'EXPENSE', paymentDay: 28 },
-    { id: 'seed-11', name: 'BUDGET ENERGIE', amount: 250.00, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Fatura', section: 'EXPENSE', paymentDay: 23 },
-    { id: 'seed-15', name: 'VODAFONE LIBERTEL BV', amount: 128.14, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Fatura', section: 'EXPENSE', paymentDay: 20 },
-    { id: 'seed-16', name: 'ZIGGO SERVICES BV', amount: 67.83, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Fatura', section: 'EXPENSE', paymentDay: 20 },
-
-    // VERGİ
-    { id: 'seed-4', name: 'GEMEENTEBAR (Vergi)', amount: 81.00, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Vergi', section: 'EXPENSE', paymentDay: 28 },
-    { id: 'seed-17', name: 'GEMEENTE AMSTERDAM', amount: 99.38, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Vergi', section: 'EXPENSE', paymentDay: 28 },
-    { id: 'seed-20', name: 'CBR (Ehliyet)', amount: 48.00, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Vergi', section: 'EXPENSE', paymentDay: 28 },
-
-    // DİĞER
-    { id: 'seed-18', name: 'FREO (Kredi)', amount: 259.73, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Kredi', section: 'EXPENSE', paymentDay: 1 },
-    { id: 'seed-19', name: 'THE RENT COMPANY BV', amount: 12.69, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Eğitim', section: 'EXPENSE', paymentDay: 28 },
-    { id: 'seed-7', name: 'TRIODOS BANK (Banka)', amount: 13.00, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Banka', section: 'EXPENSE', paymentDay: 1 },
+  // We will seed 4 months: Eylül, Ekim, Kasım, Aralık 2025
+  const seedMonths = [
+    { month: 'Eylül', year: '2025', eurRate: 48.50, usdRate: 44.20, income: 4500, extraExpenseMultiplier: 0.8 },
+    { month: 'Ekim', year: '2025', eurRate: 49.30, usdRate: 45.10, income: 4500, extraExpenseMultiplier: 1.1 },
+    { month: 'Kasım', year: '2025', eurRate: 50.10, usdRate: 46.80, income: 4500, extraExpenseMultiplier: 0.9 },
+    { month: 'Aralık', year: '2025', eurRate: 51.50, usdRate: 48.50, income: 5200, extraExpenseMultiplier: 1.3 } // Bonus month
   ];
 
-  const totalExpense = details.reduce((acc, curr) => acc + curr.amount, 0);
+  for (const mData of seedMonths) {
+    const monthKey = `${mData.month} ${mData.year}`;
+    
+    // Base fixed expenses
+    const details: BudgetDetail[] = [
+      // INCOME
+      { id: `seed-inc-1-${mData.month}`, name: 'Maaş', amount: mData.income, currency: 'EUR', type: 'FIXED', group: 'INCOME_ENTRIES', subGroup: 'Maaş', section: 'INCOME', paymentDay: 25 },
+      
+      // HOLLANDA FIXED
+      { id: `seed-1-${mData.month}`, name: 'Kira/Mortgage', amount: 1388.17, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Kredi', section: 'EXPENSE', paymentDay: 1 },
+      { id: `seed-3-${mData.month}`, name: 'Sağlık Sigortası (Aile)', amount: 310.30, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Sigorta', section: 'EXPENSE', paymentDay: 28 },
+      { id: `seed-5-${mData.month}`, name: 'İnternet Düşük', amount: 67.50, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Fatura', section: 'EXPENSE', paymentDay: 21 },
+      { id: `seed-8-${mData.month}`, name: 'Elektrik/Gaz', amount: 146.00, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Fatura', section: 'EXPENSE', paymentDay: 23 },
+      { id: `seed-18-${mData.month}`, name: 'Kredi Taksidi', amount: 259.73, currency: 'EUR', type: 'FIXED', group: 'HOLLANDA', subGroup: 'Kredi', section: 'EXPENSE', paymentDay: 1 },
 
-  const record: BudgetRecord = {
-    id: monthKey,
-    monthYear: monthKey,
-    exchangeRate: eurRate,
-    usdRate: 48.5, // Seed a value
-    totalTurkiyeTL: 0,
-    totalHollandaEUR: totalExpense,
-    totalIncomeEUR: 0,
-    totalExpenseEUR: totalExpense,
-    transferAmountEUR: 0,
-    grandTotalEUR: totalExpense,
-    details: details
-  };
+      // HOLLANDA VARIABLE (Varies by month)
+      { id: `seed-v1-${mData.month}`, name: 'Market Alışverişi', amount: 450 * mData.extraExpenseMultiplier, currency: 'EUR', type: 'VARIABLE', group: 'HOLLANDA', subGroup: 'Market & Mutfak', section: 'EXPENSE', paymentDay: 10 },
+      { id: `seed-v2-${mData.month}`, name: 'Yakıt', amount: 120 * mData.extraExpenseMultiplier, currency: 'EUR', type: 'VARIABLE', group: 'HOLLANDA', subGroup: 'Ulaşım & Yakıt', section: 'EXPENSE', paymentDay: 15 },
+      { id: `seed-v3-${mData.month}`, name: 'Dışarıda Yemek', amount: 150 * mData.extraExpenseMultiplier, currency: 'EUR', type: 'VARIABLE', group: 'HOLLANDA', subGroup: 'Eğlence', section: 'EXPENSE', paymentDay: 20 },
+      
+      // TURKIYE VARIABLE 
+      { id: `seed-t1-${mData.month}`, name: 'Aile Yardımı', amount: 5000, currency: 'TRY', type: 'VARIABLE', group: 'TURKIYE', subGroup: 'Aile Yardımı', section: 'EXPENSE', paymentDay: 5 },
+      { id: `seed-t2-${mData.month}`, name: 'Abonelikler (Exxen vb)', amount: 450, currency: 'TRY', type: 'VARIABLE', group: 'TURKIYE', subGroup: 'Genel', section: 'EXPENSE', paymentDay: 12 }
+    ];
 
-  await budgetService.saveBudget(record);
-  localStorage.setItem('seeded_dec_2025_v1', 'true');
+    // Calculate Totals
+    let totalTurkiyeTL = 0;
+    let totalHollandaEUR = 0;
+    let totalIncomeEUR = 0;
+    let totalExpenseEUR = 0;
 
-  // Instead of reloading, directly load the seeded budget
+    details.forEach(d => {
+      let eurAmount = d.amount;
+      if (d.currency === 'TRY') {
+        eurAmount = d.amount / mData.eurRate;
+        if (d.section === 'EXPENSE') totalTurkiyeTL += d.amount;
+      }
+      
+      if (d.section === 'INCOME') {
+        totalIncomeEUR += eurAmount;
+      } else {
+        totalExpenseEUR += eurAmount;
+        if (d.group === 'HOLLANDA') totalHollandaEUR += eurAmount;
+      }
+    });
+
+    const record: BudgetRecord = {
+      id: monthKey,
+      monthYear: monthKey,
+      exchangeRate: mData.eurRate,
+      usdRate: mData.usdRate,
+      totalTurkiyeTL,
+      totalHollandaEUR,
+      totalIncomeEUR,
+      totalExpenseEUR,
+      transferAmountEUR: totalTurkiyeTL / mData.eurRate,
+      grandTotalEUR: totalExpenseEUR,
+      details: details
+    };
+
+    await budgetService.saveBudget(record);
+  }
+
+  localStorage.setItem('seeded_4months_v2', 'true');
   handleBudgetSelect('Aralık', '2025');
 };
 
@@ -2166,3 +2350,50 @@ const runAutoSeed = async () => {
 initializeAppService().then(() => {
   runAutoSeed();
 });
+
+// --- MIGRATION UTILITY ---
+// Call this from the browser console: window.migrateDbJson()
+;(window as any).migrateDbJson = async () => {
+  if (!(budgetService instanceof FirestoreBudgetService)) {
+    console.error('Bu işlem sadece Cloud Mode (Firebase) aktifken çalışır.');
+    return;
+  }
+  
+  if (!budgetService.getUserId()) {
+    console.error('Lütfen önce giriş yapın.');
+    return;
+  }
+
+  try {
+    console.log('Yerel db.json verileri alınıyor...');
+    const res = await fetch('/api/db');
+    if (!res.ok) throw new Error('Yerel sunucuya ulaşılamadı. Uygulamayı yerel dev modunda çalıştırdığınızdan emin olun.');
+    
+    const data: BudgetRecord[] = await res.json();
+    if (!data || data.length === 0) {
+      console.log('db.json boş, aktarılacak veri yok.');
+      return;
+    }
+
+    console.log(`${data.length} kayıt bulundu. Firebase'e aktarılıyor...`);
+    let successCount = 0;
+    
+    for (const record of data) {
+      try {
+        await budgetService.saveBudget(record);
+        console.log(`✅ Aktarıldı: ${record.id}`);
+        successCount++;
+      } catch (e: any) {
+         console.error(`❌ Hاتا: ${record.id} aktarılamadı`, e.message);
+      }
+    }
+    
+    console.log(`🎉 İşlem tamamlandı! ${successCount}/${data.length} kayıt başarıyla aktarıldı.`);
+    alert(`Geçiş tamamlandı: ${successCount} kayıt Firebase'e kopyalandı.`);
+    window.location.reload();
+  } catch (error: any) {
+    console.error('Migration Error:', error);
+    alert(`Aktarım hatası: ${error.message}`);
+  }
+};
+
