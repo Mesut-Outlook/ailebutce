@@ -221,7 +221,7 @@ interface BudgetService {
   saveBudget(budget: BudgetRecord): Promise<void>
   deleteBudget(id: string): Promise<void>
   subscribe(callback: (budgets: BudgetRecord[]) => void): () => void
-  getUserId(): string
+  getUserId(): string | null
 }
 
 const migrateLegacyData = (legacyData: any): BudgetRecord => {
@@ -267,8 +267,8 @@ class FileBudgetService implements BudgetService {
     }
   }
 
-  getUserId(): string {
-    return ''
+  getUserId(): string | null {
+    return null
   }
 
   private async refresh() {
@@ -392,8 +392,8 @@ class FirestoreBudgetService implements BudgetService {
     await signOut(this.auth)
   }
 
-  getUserId(): string {
-    return this.userId || 'Bilinmiyor'
+  getUserId(): string | null {
+    return this.userId
   }
 
   async saveBudget(budget: BudgetRecord): Promise<void> {
@@ -2023,6 +2023,12 @@ const initializeAppService = async () => {
       document.getElementById('login-page')?.classList.remove('hidden')
       document.getElementById('app-container')?.classList.add('hidden')
 
+      // Pre-fill test credentials if available
+      const testEmail = import.meta.env.VITE_TEST_USER_EMAIL as string | undefined
+      const testPass = import.meta.env.VITE_TEST_USER_PASSWORD as string | undefined
+      if (testEmail) (document.getElementById('login-email') as HTMLInputElement).value = testEmail
+      if (testPass) (document.getElementById('login-password') as HTMLInputElement).value = testPass
+
       const loginForm = document.getElementById('login-form') as HTMLFormElement
       loginForm?.addEventListener('submit', async (e) => {
         e.preventDefault()
@@ -2040,8 +2046,8 @@ const initializeAppService = async () => {
           // Logged in successfully
           document.getElementById('login-page')?.classList.add('hidden')
           document.getElementById('app-container')?.classList.remove('hidden')
-          userIdDisplay.textContent = budgetService!.getUserId()
-          document.getElementById('profile-user-id')!.textContent = budgetService!.getUserId()
+          userIdDisplay.textContent = budgetService!.getUserId() || 'Misafir'
+          document.getElementById('profile-user-id')!.textContent = budgetService!.getUserId() || 'Bilinmiyor'
           
           finishAppInit()
         } catch (error: any) {
@@ -2054,8 +2060,8 @@ const initializeAppService = async () => {
                 // Created successfully
                 document.getElementById('login-page')?.classList.add('hidden')
                 document.getElementById('app-container')?.classList.remove('hidden')
-                userIdDisplay.textContent = budgetService!.getUserId()
-                document.getElementById('profile-user-id')!.textContent = budgetService!.getUserId()
+                userIdDisplay.textContent = budgetService!.getUserId() || 'Misafir'
+                document.getElementById('profile-user-id')!.textContent = budgetService!.getUserId() || 'Bilinmiyor'
                 finishAppInit()
              } catch (regError: any) {
                 if (btn) btn.textContent = 'Giriş Yap'
@@ -2069,8 +2075,8 @@ const initializeAppService = async () => {
     } else {
       // Local mode or already authenticated
       document.getElementById('app-container')?.classList.remove('hidden')
-      userIdDisplay.textContent = budgetService.getUserId()
-      document.getElementById('profile-user-id')!.textContent = budgetService.getUserId()
+      userIdDisplay.textContent = budgetService.getUserId() || 'Misafir'
+      document.getElementById('profile-user-id')!.textContent = budgetService.getUserId() || 'Bilinmiyor'
       finishAppInit()
     }
 
