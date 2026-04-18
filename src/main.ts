@@ -122,19 +122,41 @@ const showAlert = (message: string, title = 'Bildirim', type: 'info' | 'error' |
 
 const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
   const toast = document.createElement('div')
-  const bg = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-indigo-600'
-  toast.className = `fixed bottom-4 right-4 ${bg} text-white px-6 py-3 rounded-lg shadow-lg z-[300] font-bold animate-bounce flex items-center gap-2`
-
+  const cls = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info'
+  toast.className = `toast ${cls}`
   const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'
   toast.innerHTML = `<span>${icon}</span> ${message}`
-
   document.body.appendChild(toast)
   setTimeout(() => {
-    toast.classList.replace('animate-bounce', 'opacity-0')
     toast.style.transition = 'opacity 0.5s ease'
+    toast.style.opacity = '0'
     setTimeout(() => toast.remove(), 500)
   }, 3000)
 }
+
+// --- THEME TOGGLE ---
+const initTheme = () => {
+  const saved = localStorage.getItem('theme') || 'light'
+  document.documentElement.setAttribute('data-theme', saved)
+  updateThemeIcons(saved)
+}
+
+const updateThemeIcons = (theme: string) => {
+  document.getElementById('theme-icon-light')?.classList.toggle('hidden', theme === 'dark')
+  document.getElementById('theme-icon-dark')?.classList.toggle('hidden', theme === 'light')
+}
+
+const toggleTheme = () => {
+  const current = document.documentElement.getAttribute('data-theme') || 'light'
+  const next = current === 'light' ? 'dark' : 'light'
+  document.documentElement.setAttribute('data-theme', next)
+  localStorage.setItem('theme', next)
+  updateThemeIcons(next)
+}
+
+// Init theme immediately
+initTheme()
+document.getElementById('theme-toggle-btn')?.addEventListener('click', toggleTheme)
 
 // --- ERROR HANDLING ---
 const showError = (message: string) => {
@@ -353,13 +375,13 @@ class FirestoreBudgetService implements BudgetService {
   private appId: string
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private config: any
-  private initialToken: string | null
+  // private initialToken: string | null // kept for reference, unused by logic
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  constructor(config: any, appId: string, initialToken: string | null) {
+  constructor(config: any, appId: string, _initialToken: string | null) {
     this.config = config
     this.appId = appId
-    this.initialToken = initialToken
+    // _initialToken unused; kept for API compatibility
   }
 
   async init(): Promise<void> {
@@ -506,7 +528,7 @@ const getElement = <T extends HTMLElement>(id: string): T => {
 }
 
 const loadingOverlay = getElement<HTMLDivElement>('loading-overlay')
-const appContainer = getElement<HTMLDivElement>('app-container')
+// const appContainer = getElement<HTMLDivElement>('app-container') // unused; accessed via getElementById
 const userIdDisplay = getElement<HTMLSpanElement>('user-id')
 
 // Helper for sorting/finding last budget
@@ -747,7 +769,7 @@ const createGroupElement = (groupId: string, groupType: GroupType, groupName = '
     groupDiv.innerHTML = `
         <div class="px-3 py-2 border-b flex justify-between items-center group-header" style="background-color: ${bgColor}40; border-color: ${borderColor}">
           <div class="flex items-center gap-2 flex-grow">
-              <button onclick="toggleGroup('${groupId}')" class="text-gray-400 hover:text-gray-600 transition transform duration-200" id="${groupId}-icon">
+              <button onclick="toggleGroup('${groupId}')" class="text-gray-400 hover:text-gray-600 transition transform duration-200 rotate-180" id="${groupId}-icon">
                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
               </button>
               <input type="text" class="group-name-input bg-transparent font-semibold text-gray-700 focus:outline-none focus:border-green-500 border-b border-transparent w-full" placeholder="Gelir Grubu Adı" value="${groupName}" />
@@ -760,7 +782,7 @@ const createGroupElement = (groupId: string, groupType: GroupType, groupName = '
             </button>
           </div>
         </div>
-        <div class="p-3 space-y-2 group-items-container min-h-[50px] transition-colors" id="${groupId}-items" style="background-color: ${bgColor}10">
+        <div class="p-3 space-y-2 group-items-container min-h-[50px] transition-colors hidden" id="${groupId}-items" style="background-color: ${bgColor}10">
           <!-- Items will go here -->
         </div>
         <div class="px-3 py-2 border-t text-right group-footer" style="background-color: ${bgColor}20; border-color: ${borderColor}">
@@ -794,7 +816,7 @@ const createGroupElement = (groupId: string, groupType: GroupType, groupName = '
     groupDiv.innerHTML = `
         <div class="px-3 py-2 border-b flex justify-between items-center group-header" style="background-color: ${bgColor}40; border-color: ${borderColor}">
           <div class="flex items-center gap-2 flex-grow">
-              <button onclick="toggleGroup('${groupId}')" class="text-gray-400 hover:text-gray-600 transition transform duration-200" id="${groupId}-icon">
+              <button onclick="toggleGroup('${groupId}')" class="text-gray-400 hover:text-gray-600 transition transform duration-200 rotate-180" id="${groupId}-icon">
                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
               </button>
               <input type="text" class="group-name-input bg-transparent font-semibold text-gray-700 focus:outline-none focus:border-orange-500 border-b border-transparent w-full" placeholder="Türkiye Harcama Grubu" value="${groupName}" />
@@ -808,7 +830,7 @@ const createGroupElement = (groupId: string, groupType: GroupType, groupName = '
             </button>
           </div>
         </div>
-        <div class="p-3 space-y-2 group-items-container min-h-[50px] transition-colors" id="${groupId}-items" style="background-color: ${bgColor}10">
+        <div class="p-3 space-y-2 group-items-container min-h-[50px] transition-colors hidden" id="${groupId}-items" style="background-color: ${bgColor}10">
           <!-- Items will go here -->
         </div>
         <div class="px-3 py-2 border-t text-right group-footer" style="background-color: ${bgColor}20; border-color: ${borderColor}">
@@ -842,7 +864,7 @@ const createGroupElement = (groupId: string, groupType: GroupType, groupName = '
     groupDiv.innerHTML = `
         <div class="px-3 py-2 border-b flex justify-between items-center group-header" style="background-color: ${bgColor}40; border-color: ${borderColor}">
           <div class="flex items-center gap-2 flex-grow">
-              <button onclick="toggleGroup('${groupId}')" class="text-gray-400 hover:text-gray-600 transition transform duration-200" id="${groupId}-icon">
+              <button onclick="toggleGroup('${groupId}')" class="text-gray-400 hover:text-gray-600 transition transform duration-200 rotate-180" id="${groupId}-icon">
                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
               </button>
               <input type="text" class="group-name-input bg-transparent font-semibold text-gray-700 focus:outline-none focus:border-indigo-500 border-b border-transparent w-full" placeholder="Grup Adı (Örn: Mutfak)" value="${groupName}" />
@@ -856,7 +878,7 @@ const createGroupElement = (groupId: string, groupType: GroupType, groupName = '
             </button>
           </div>
         </div>
-        <div class="p-3 space-y-2 group-items-container min-h-[50px] transition-colors" id="${groupId}-items" style="background-color: ${bgColor}10">
+        <div class="p-3 space-y-2 group-items-container min-h-[50px] transition-colors hidden" id="${groupId}-items" style="background-color: ${bgColor}10">
           <!-- Items will go here -->
         </div>
         <div class="px-3 py-2 border-t text-right" style="background-color: ${bgColor}20; border-color: ${borderColor}">
@@ -1070,7 +1092,7 @@ window.addExpenseItem = addExpenseItem
 window.removeExpenseItem = removeExpenseItem
 window.toggleGroup = toggleGroup
 
-let allCollapsed = false
+let allCollapsed = true
 const toggleAllGroups = () => {
   allCollapsed = !allCollapsed
   const btn = document.getElementById('toggle-all-btn')
@@ -1229,25 +1251,7 @@ const showPage = (pageId: string) => {
 
 // Wire up GLOBAL buttons
 const setupButtons = () => {
-  // Income Privacy Toggle
-  const toggleIncomeVisibility = (show: boolean) => {
-    const incomeCard = document.getElementById('income-card')
-    const incomeSection = document.getElementById('income-section')
-    const privacyCard = document.getElementById('income-privacy-card')
-
-    if (show) {
-      incomeCard?.classList.remove('hidden')
-      incomeSection?.classList.remove('hidden')
-      privacyCard?.classList.add('hidden')
-    } else {
-      incomeCard?.classList.add('hidden')
-      incomeSection?.classList.add('hidden')
-      privacyCard?.classList.remove('hidden')
-    }
-  }
-
-  document.getElementById('income-privacy-card')?.addEventListener('click', () => toggleIncomeVisibility(true))
-  document.getElementById('hide-income-btn')?.addEventListener('click', () => toggleIncomeVisibility(false))
+  // Income privacy toggle removed — income is always visible now
   document.getElementById('add-income-btn')?.addEventListener('click', () => addGroup('INCOME_ENTRIES', 'Gelirler'))
   document.getElementById('add-group-hollanda-btn')?.addEventListener('click', () => addGroup('HOLLANDA'))
   document.getElementById('add-turkey-group-btn')?.addEventListener('click', () => addGroup('TURKIYE', 'Yeni Kategori'))
@@ -1373,10 +1377,46 @@ const setupButtons = () => {
   })
 
   // Migrate Data - Trigger File Picker
-  document.getElementById('migrate-data-btn')?.addEventListener('click', () => {
-    if (!(budgetService instanceof FirestoreBudgetService) || !budgetService.getUserId()) {
-      return showError('Sadece bulut (giriş yapılmış) modunda veri aktarımı yapılabilir.')
+  document.getElementById('migrate-data-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('migrate-data-btn') as HTMLButtonElement
+    const origHTML = btn?.innerHTML || ''
+
+    // If cloud mode with login: fetch from /api/db directly
+    if (budgetService instanceof FirestoreBudgetService && budgetService.getUserId()) {
+      try {
+        if (btn) btn.innerHTML = '⏳ db.json okunuyor...'
+        const res = await fetch('/api/db')
+        if (!res.ok) throw new Error('API erişilemedi')
+        const data: BudgetRecord[] = await res.json()
+
+        if (!data || !Array.isArray(data) || data.length === 0) {
+          if (btn) btn.innerHTML = origHTML
+          return showAlert('db.json dosyası boş veya bulunamadı.', 'Bilgi', 'info')
+        }
+
+        if (btn) btn.innerHTML = `⏳ ${data.length} ay aktarılıyor...`
+        let count = 0
+        for (const rec of data) {
+          const migrated = rec.totalTurkiyeTL !== undefined ? rec : migrateLegacyData(rec)
+          await budgetService!.saveBudget(migrated)
+          count++
+          if (btn) btn.innerHTML = `⏳ ${count}/${data.length} aktarıldı...`
+        }
+
+        localStorage.setItem('db_json_migrated_final', 'true')
+        if (btn) btn.innerHTML = `✅ ${count} ay aktarıldı`
+        document.getElementById('user-menu-modal')?.classList.remove('show')
+        showToast(`${count} aylık veri Firebase'e aktarıldı!`, 'success')
+        setTimeout(() => { if (btn) btn.innerHTML = origHTML }, 3000)
+      } catch (err) {
+        if (btn) btn.innerHTML = origHTML
+        showAlert('Aktarım hatası: ' + (err as Error).message, 'Hata', 'error')
+      }
+      return
     }
+
+    // Local mode: file upload fallback
+    if (!budgetService) return showError('Servis başlatılmamış.')
     document.getElementById('migrate-file-input')?.click()
   })
 
@@ -1400,7 +1440,7 @@ const setupButtons = () => {
           let loaded = 0
           for (const rec of data) {
             const migrated = rec.totalTurkiyeTL !== undefined ? rec : migrateLegacyData(rec)
-            await budgetService.saveBudget(migrated)
+            await budgetService!.saveBudget(migrated)
             loaded++
           }
           if (btn) btn.innerHTML = 'Aktarıldı ✓'
@@ -1907,8 +1947,10 @@ const renderWelcomeBudgetList = (budgets: BudgetRecord[]) => {
     const setText = (id: string, val: string) => { const el = document.getElementById(id); if (el) el.textContent = val; }
     setText('landing-income', '—')
     setText('landing-expense', '—')
+    setText('landing-nl', '—')
+    setText('landing-tr', '—')
     setText('landing-balance', '—')
-    setText('landing-rate', '—')
+    setText('landing-rate', 'EUR/TRY: —')
     return
   }
 
@@ -1921,35 +1963,55 @@ const renderWelcomeBudgetList = (budgets: BudgetRecord[]) => {
 
   // Update Hero Stats with latest budget
   const setText = (id: string, val: string) => { const el = document.getElementById(id); if (el) el.textContent = val; }
-  setText('landing-income', formatCurrency(sorted[0].totalIncomeEUR, 'EUR'))
-  setText('landing-expense', formatCurrency(sorted[0].totalExpenseEUR, 'EUR'))
-  const bal = sorted[0].totalIncomeEUR - sorted[0].totalExpenseEUR;
+  const last = sorted[0]
+  const lastTurkeyEUR = last.exchangeRate > 0 ? last.totalTurkiyeTL / last.exchangeRate : 0
+  const lastNlEUR = last.totalExpenseEUR - lastTurkeyEUR
+  const bal = last.totalIncomeEUR - last.totalExpenseEUR
+  const balPct = last.totalIncomeEUR > 0 ? Math.max(0, Math.min(100, (bal / last.totalIncomeEUR) * 100)) : 0
+
+  setText('landing-income', formatCurrency(last.totalIncomeEUR, 'EUR'))
+  setText('landing-expense', formatCurrency(last.totalExpenseEUR, 'EUR'))
+  setText('landing-nl', formatCurrency(lastNlEUR, 'EUR'))
+  setText('landing-tr', formatCurrency(lastTurkeyEUR, 'EUR'))
   setText('landing-balance', formatCurrency(bal, 'EUR'))
-  setText('landing-rate', sorted[0].exchangeRate > 0 ? formatCurrency(sorted[0].exchangeRate, 'TRY') : '—')
+  setText('landing-rate', `EUR/TRY: ${last.exchangeRate > 0 ? last.exchangeRate.toFixed(2) : '—'}`)
+
+  // Update balance hero color
+  const balEl = document.getElementById('landing-balance')
+  if (balEl) {
+    balEl.classList.toggle('balance-positive', bal >= 0)
+    balEl.classList.toggle('balance-negative', bal < 0)
+  }
+
+  // Progress bar on landing
+  const bar = document.getElementById('landing-progress-bar')
+  if (bar) {
+    bar.style.width = `${100 - balPct}%`
+    bar.className = 'balance-bar-fill'
+    if (balPct < 20) bar.classList.add('danger')
+    else if (balPct < 40) bar.classList.add('warn')
+  }
 
   sorted.forEach(budget => {
     const div = document.createElement('div')
-    div.className = 'budget-card shadow-sm hover:shadow-md transition-all'
+    div.className = 'budget-card'
     
     const [m, y] = budget.id.split(' ')
     const balance = budget.totalIncomeEUR - budget.totalExpenseEUR
+    const turkeyEUR = budget.exchangeRate > 0 ? budget.totalTurkiyeTL / budget.exchangeRate : 0
+    const balClass = balance < 0 ? 'negative' : 'positive'
 
     div.innerHTML = `
       <div class="info">
-        <h3 class="text-gray-800 font-bold">${m} ${y}</h3>
-        <p class="text-sm text-gray-500">Gider: ${formatCurrency(budget.totalExpenseEUR, 'EUR')} ${budget.totalTurkiyeTL > 0 ? `(TR: ${formatCurrency(budget.totalTurkiyeTL, 'TRY')})` : ''}</p>
+        <h3>${m} ${y}</h3>
+        <p>NL: ${formatCurrency(budget.totalHollandaEUR, 'EUR')} &nbsp;·&nbsp; TR: ${formatCurrency(turkeyEUR, 'EUR')}</p>
       </div>
-      <div style="display: flex; align-items: center; gap: 0.75rem;">
-        <div class="amount ${balance < 0 ? 'text-red-500' : 'text-green-600'} font-bold">
-          ${formatCurrency(balance, 'EUR')}
-        </div>
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-400"><path d="M9 18l6-6-6-6"/></svg>
+      <div style="display:flex; align-items:center; gap:0.75rem;">
+        <div class="amount ${balClass}">${formatCurrency(balance, 'EUR')}</div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--color-text-subtle); flex-shrink:0;"><path d="M9 18l6-6-6-6"/></svg>
       </div>
     `
-    div.addEventListener('click', () => {
-      handleBudgetSelect(m, y)
-    })
-
+    div.addEventListener('click', () => handleBudgetSelect(m, y))
     container.appendChild(div)
   })
 }
@@ -2001,7 +2063,7 @@ window.deleteBudget = async (monthKey: string) => {
 // --- BOOTSTRAP ---
 const initializeAppService = async () => {
   try {
-    const hasFirebaseConfig = Object.keys(firebaseConfig).length > 2 // Check if we have more than a dummy/empty object
+    const hasFirebaseConfig = Object.keys(firebaseConfig).length > 2
 
     if (hasFirebaseConfig && !firebaseConfig.apiKey.includes('YOUR_API_KEY')) {
       console.log('Firebase Config Found. Initializing Cloud Mode...')
@@ -2015,67 +2077,90 @@ const initializeAppService = async () => {
 
     loadingOverlay.classList.add('hidden')
     
-    // Auth Flow Logic
+    // --- PIN-BASED AUTH FLOW ---
     const isCloudMode = budgetService instanceof FirestoreBudgetService
-    
-    if (isCloudMode && !budgetService.getUserId()) {
-      // Need to login
+    const appPin = (import.meta.env.VITE_APP_PIN as string | undefined) || ''
+    const isPinVerified = sessionStorage.getItem('pin_verified') === 'true'
+
+    // If PIN is set and not yet verified this session, always show PIN screen first
+    if (appPin && !isPinVerified) {
       document.getElementById('login-page')?.classList.remove('hidden')
       document.getElementById('app-container')?.classList.add('hidden')
-
-      // Pre-fill test credentials if available
-      const testEmail = import.meta.env.VITE_TEST_USER_EMAIL as string | undefined
-      const testPass = import.meta.env.VITE_TEST_USER_PASSWORD as string | undefined
-      if (testEmail) (document.getElementById('login-email') as HTMLInputElement).value = testEmail
-      if (testPass) (document.getElementById('login-password') as HTMLInputElement).value = testPass
 
       const loginForm = document.getElementById('login-form') as HTMLFormElement
       loginForm?.addEventListener('submit', async (e) => {
         e.preventDefault()
         const btn = document.getElementById('login-btn') as HTMLButtonElement
-        const email = (document.getElementById('login-email') as HTMLInputElement).value
-        const pass = (document.getElementById('login-password') as HTMLInputElement).value
+        const enteredPin = (document.getElementById('login-password') as HTMLInputElement).value
         const err = document.getElementById('login-error')
 
-        try {
-          if (btn) btn.textContent = 'Giriş Yapılıyor...'
-          if (err) err.textContent = ''
-          
-          await (budgetService as FirestoreBudgetService).login(email, pass)
-          
-          // Logged in successfully
-          document.getElementById('login-page')?.classList.add('hidden')
-          document.getElementById('app-container')?.classList.remove('hidden')
-          userIdDisplay.textContent = budgetService!.getUserId() || 'Misafir'
-          document.getElementById('profile-user-id')!.textContent = budgetService!.getUserId() || 'Bilinmiyor'
-          
-          finishAppInit()
-        } catch (error: any) {
+        if (enteredPin !== appPin) {
+          if (err) err.textContent = '❌ Hatalı şifre. Tekrar deneyin.'
+          ;(document.getElementById('login-password') as HTMLInputElement).value = ''
           if (btn) btn.textContent = 'Giriş Yap'
-          if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-             // Create it!
-             try {
-                if (err) err.textContent = 'Hesap bulunamadı, oluşturuluyor...'
-                await (budgetService as FirestoreBudgetService).register(email, pass)
-                // Created successfully
-                document.getElementById('login-page')?.classList.add('hidden')
-                document.getElementById('app-container')?.classList.remove('hidden')
-                userIdDisplay.textContent = budgetService!.getUserId() || 'Misafir'
-                document.getElementById('profile-user-id')!.textContent = budgetService!.getUserId() || 'Bilinmiyor'
-                finishAppInit()
-             } catch (regError: any) {
+          return
+        }
+
+        // PIN is correct — mark session and proceed to Firebase login
+        sessionStorage.setItem('pin_verified', 'true')
+        if (btn) btn.textContent = 'Bağlanıyor...'
+        if (err) err.textContent = ''
+
+        if (isCloudMode && !budgetService!.getUserId()) {
+          // Auto-login to Firebase with env credentials (hidden from user)
+          const autoEmail = import.meta.env.VITE_TEST_USER_EMAIL as string | undefined
+          const autoPass = import.meta.env.VITE_TEST_USER_PASSWORD as string | undefined
+
+          if (!autoEmail || !autoPass) {
+            if (err) err.textContent = 'Yapılandırma hatası: Firebase kimlik bilgileri eksik.'
+            sessionStorage.removeItem('pin_verified')
+            if (btn) btn.textContent = 'Giriş Yap'
+            return
+          }
+
+          try {
+            await (budgetService as FirestoreBudgetService).login(autoEmail, autoPass)
+          } catch (fbError: any) {
+            // If user doesn't exist, create it
+            if (fbError.code === 'auth/user-not-found' || fbError.code === 'auth/invalid-credential') {
+              try {
+                await (budgetService as FirestoreBudgetService).register(autoEmail, autoPass)
+              } catch (regError: any) {
+                if (err) err.textContent = 'Firebase bağlantı hatası: ' + regError.message
+                sessionStorage.removeItem('pin_verified')
                 if (btn) btn.textContent = 'Giriş Yap'
-                if (err) err.textContent = 'Hata: ' + regError.message
-             }
-          } else {
-             if (err) err.textContent = 'Hata: ' + error.message
+                return
+              }
+            } else {
+              if (err) err.textContent = 'Firebase hatası: ' + fbError.message
+              sessionStorage.removeItem('pin_verified')
+              if (btn) btn.textContent = 'Giriş Yap'
+              return
+            }
           }
         }
+
+        // All auth passed — show app
+        document.getElementById('login-page')?.classList.add('hidden')
+        document.getElementById('app-container')?.classList.remove('hidden')
+        userIdDisplay.textContent = budgetService!.getUserId() || 'Yerel'
+        document.getElementById('profile-user-id')!.textContent = budgetService!.getUserId() || 'Bilinmiyor'
+        finishAppInit()
       })
     } else {
-      // Local mode or already authenticated
+      // No PIN configured, or session already verified — go straight in
+      if (isCloudMode && !budgetService.getUserId()) {
+        // Still need Firebase login if not authenticated
+        const autoEmail = import.meta.env.VITE_TEST_USER_EMAIL as string | undefined
+        const autoPass = import.meta.env.VITE_TEST_USER_PASSWORD as string | undefined
+        if (autoEmail && autoPass) {
+          try {
+            await (budgetService as FirestoreBudgetService).login(autoEmail, autoPass)
+          } catch (_) { /* ignore, subscribe will handle it */ }
+        }
+      }
       document.getElementById('app-container')?.classList.remove('hidden')
-      userIdDisplay.textContent = budgetService.getUserId() || 'Misafir'
+      userIdDisplay.textContent = budgetService.getUserId() || 'Yerel'
       document.getElementById('profile-user-id')!.textContent = budgetService.getUserId() || 'Bilinmiyor'
       finishAppInit()
     }
@@ -2084,8 +2169,8 @@ const initializeAppService = async () => {
       if (!budgetService) return
       budgetService.subscribe(onBudgetsUpdated)
       showPage('page-landing')
-      
-      // AUTO-MIGRATE ON LOGIN (Request: "sen yukle")
+
+      // AUTO-MIGRATE ON LOGIN
       silentCloudMigration()
     }
 
