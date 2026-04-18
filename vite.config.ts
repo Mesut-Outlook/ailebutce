@@ -24,7 +24,7 @@ const getLocalIP = () => {
 // https://vite.dev/config/
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/ailebutce/',
+  base: '/',
   plugins: [{
     name: 'local-db-plugin',
     configureServer(server) {
