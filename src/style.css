@@ -147,6 +147,9 @@ body {
   input[type="password"],
   select,
   textarea { font-size: 16px !important; }
+
+  /* Büyük Yazı Modu (Sadece Mobilde Geçerli Olacak) */
+  html.large-text { font-size: 19px !important; }
 }
 
 /* ═══════════════════════════════════════════════

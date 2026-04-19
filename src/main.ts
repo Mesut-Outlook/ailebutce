@@ -158,6 +158,52 @@ const toggleTheme = () => {
 initTheme()
 document.getElementById('theme-toggle-btn')?.addEventListener('click', toggleTheme)
 
+// --- FONT SIZE TOGGLE ---
+const initFontSize = () => {
+  const isLarge = localStorage.getItem('largeFont') === 'true'
+  if (isLarge) {
+    document.documentElement.classList.add('large-text')
+  } else {
+    document.documentElement.classList.remove('large-text')
+  }
+  updateFontToggleSwitch(isLarge)
+}
+
+const updateFontToggleSwitch = (isLarge: boolean) => {
+  const switchKnob = document.getElementById('font-toggle-knob')
+  const switchBg = document.getElementById('font-toggle-switch')
+  if (switchKnob && switchBg) {
+    if (isLarge) {
+      switchKnob.style.left = '18px'
+      switchKnob.style.background = '#fff'
+      switchBg.style.background = 'var(--color-primary)'
+    } else {
+      switchKnob.style.left = '2px'
+      switchKnob.style.background = 'var(--color-text-muted)'
+      switchBg.style.background = 'var(--color-surface-3)'
+    }
+  }
+}
+
+const toggleFontSize = () => {
+  const isLarge = document.documentElement.classList.contains('large-text')
+  const nextLarge = !isLarge
+  
+  if (nextLarge) {
+    document.documentElement.classList.add('large-text')
+    localStorage.setItem('largeFont', 'true')
+  } else {
+    document.documentElement.classList.remove('large-text')
+    localStorage.setItem('largeFont', 'false')
+  }
+  updateFontToggleSwitch(nextLarge)
+}
+
+initFontSize()
+
+// We need to attach the event listener after UI is loaded, or directly since it's at the end of the HTML body
+document.getElementById('toggle-font-size-btn')?.addEventListener('click', toggleFontSize)
+
 // --- ERROR HANDLING ---
 const showError = (message: string) => {
   const errorBox = document.getElementById('error-box')
