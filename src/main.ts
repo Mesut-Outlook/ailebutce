@@ -1317,9 +1317,7 @@ const setupButtons = () => {
 
   const goHomeLogic = async () => {
     if (isDirty) {
-      const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Ana Sayfaya Dön')
-      if (result === 'cancel') return
-      if (result === 'save') await saveCurrentBudget()
+      await saveCurrentBudget()
     }
     activeMonth = ''; activeYear = ''
     document.getElementById('active-budget-display')?.classList.add('hidden')
@@ -1348,9 +1346,7 @@ const setupButtons = () => {
 
   const goReportsLogic = async () => {
     if (isDirty) {
-      const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Raporlara Git')
-      if (result === 'cancel') return
-      if (result === 'save') await saveCurrentBudget()
+      await saveCurrentBudget()
     }
     activeMonth = ''; activeYear = ''
     document.getElementById('active-budget-display')?.classList.add('hidden')
@@ -1399,12 +1395,7 @@ const setupButtons = () => {
       handleBudgetSelect(m, y)
     } else {
       if (isDirty) {
-        const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Değişiklikleri Kaydet?')
-        if (result === 'cancel') {
-          (e.target as HTMLSelectElement).value = `${activeMonth} ${activeYear}`
-          return
-        }
-        if (result === 'save') await saveCurrentBudget()
+        await saveCurrentBudget()
       }
       activeMonth = ''
       activeYear = ''
@@ -1606,53 +1597,63 @@ const initNewBudget = (_month: string, _year: string) => {
   document.getElementById('turkiye-groups-container')!.innerHTML = ''
     ; (document.getElementById('eur-rate') as HTMLInputElement).value = ''
 
-  // 1. Always create the Standard Groups first
-  createDefaultGroups()
-
-  // 2. Auto-fill FIXED inputs only from *last available budget*
+  // 1. Auto-fill groups and FIXED inputs from *last available budget*
   const lastBudget = getLastBudget()
 
-  if (lastBudget && lastBudget.details.length > 0) {
-    const fixedItems = lastBudget.details.filter(d => d.type === 'FIXED')
+  if (lastBudget) {
+    // We recreate groups from lastBudget exactly
+    const groupsToCreate = new Map<string, { type: GroupType, name: string, color?: string }>()
+    const getKey = (type: GroupType, name: string) => `${type}::${name}`
+    
+    lastBudget.details.forEach(item => {
+      const subGroup = item.subGroup || 'Genel'
+      let gType = item.group
+      if (item.section === 'INCOME') gType = 'INCOME_ENTRIES'
+      const key = getKey(gType, subGroup)
+      if (!groupsToCreate.has(key)) {
+        groupsToCreate.set(key, { type: gType, name: subGroup, color: item.color })
+      }
+    })
 
+    // Create exactly these groups
+    groupsToCreate.forEach((groupData) => {
+      const groupId = generateId()
+      createGroupElement(groupId, groupData.type, groupData.name, groupData.color || '')
+    })
+
+    const fixedItems = lastBudget.details.filter(d => d.type === 'FIXED')
     if (fixedItems.length > 0) {
-      // Merge Fixed Items into existing groups or create new ones
       fixedItems.forEach(item => {
         const subGroup = item.subGroup || 'Genel'
         let gType = item.group
         if (item.section === 'INCOME') gType = 'INCOME_ENTRIES'
 
-        // Find existing group element by name to reuse it
         let targetGroupId: string | null = null
-
-        // Helper to search ID
         const containerId = gType === 'INCOME_ENTRIES' ? 'income-groups-container' : (gType === 'TURKIYE' ? 'turkiye-groups-container' : 'expense-groups-container')
         const container = document.getElementById(containerId)
         if (container) {
-          // Different group types use different input selectors
-          // HOLLANDA uses .group-name-input, TURKIYE and INCOME_ENTRIES use plain text inputs
           const inputSelector = gType === 'HOLLANDA' ? '.group-name-input' : 'input[type="text"]'
           const inputs = container.querySelectorAll(inputSelector)
           for (let i = 0; i < inputs.length; i++) {
             if ((inputs[i] as HTMLInputElement).value === subGroup) {
-              // Found match! Get the group element using data-group-type
               const groupEl = inputs[i].closest('[data-group-type]')
-              if (groupEl) targetGroupId = groupEl.id // Use id instead of data-group-id
+              if (groupEl) targetGroupId = groupEl.id
               break;
             }
           }
         }
 
-        // If not found, create it
         if (!targetGroupId) {
           targetGroupId = generateId()
           createGroupElement(targetGroupId, gType, subGroup, item.color)
         }
 
-        // Add the fixed item
         addExpenseItem(targetGroupId, item)
       })
     }
+  } else {
+    // If no previous budget exists, just create standard ones
+    createDefaultGroups()
   }
 
   calculateEditorTotals()
@@ -2069,13 +2070,7 @@ const handleBudgetSelect = async (m: string, y: string) => {
   const sel = document.getElementById('active-budget-select') as HTMLSelectElement
 
   if (isDirty) {
-    const result = await showConfirm('Kaydedilmemiş değişiklikler var. Ne yapmak istersiniz?', 'Değişiklikleri Kaydet?')
-    if (result === 'cancel') {
-      // Revert select UI to current active month
-      if (sel) sel.value = `${activeMonth} ${activeYear}`
-      return
-    }
-    if (result === 'save') await saveCurrentBudget()
+    await saveCurrentBudget()
   }
 
   activeMonth = m
@@ -2307,9 +2302,12 @@ const initializeAppService = async () => {
       modal?.classList.remove('hidden')
     })
 
-    cancelBtn?.addEventListener('click', () => {
+    const closeModal = () => {
       modal?.classList.add('hidden')
-    })
+      modal?.classList.remove('show')
+    }
+
+    cancelBtn?.addEventListener('click', closeModal)
 
     confirmBtn?.addEventListener('click', async () => {
       const m = mSelect.value
@@ -2332,7 +2330,7 @@ const initializeAppService = async () => {
         await saveCurrentBudget()
       }
 
-      modal?.classList.add('hidden')
+      closeModal()
     })
 
     // Setup global listeners
@@ -2368,7 +2366,7 @@ const initializeAppService = async () => {
     // General app level listeners
     document.getElementById('new-budget-modal')?.addEventListener('click', (e) => {
       if (e.target === document.getElementById('new-budget-modal')) {
-        document.getElementById('new-budget-modal')?.classList.remove('show')
+        closeModal()
       }
     })
     document.getElementById('user-menu-modal')?.addEventListener('click', (e) => {
