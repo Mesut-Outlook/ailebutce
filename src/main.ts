@@ -558,11 +558,8 @@ const setDirty = (status: boolean) => {
     else saveBtn.classList.remove('ring-2', 'ring-offset-2', 'ring-indigo-500')
   }
 }
-window.addEventListener('beforeunload', (e) => {
-  if (isDirty) {
-    e.preventDefault()
-    e.returnValue = ''
-  }
+window.addEventListener('beforeunload', () => {
+  // No confirmation — in-app navigation already auto-saves
 })
 
 // --- DOM ELEMENTS ---
