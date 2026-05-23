@@ -1621,7 +1621,7 @@ const initNewBudget = (_month: string, _year: string) => {
       createGroupElement(groupId, groupData.type, groupData.name, groupData.color || '')
     })
 
-    const fixedItems = lastBudget.details.filter(d => d.type === 'FIXED')
+    const fixedItems = lastBudget.details
     if (fixedItems.length > 0) {
       fixedItems.forEach(item => {
         const subGroup = item.subGroup || 'Genel'
@@ -2315,6 +2315,9 @@ const initializeAppService = async () => {
       const modalExchangeRate = modalRateInput?.value ? parseFloat(modalRateInput.value) : 0
       const modalUsdRate = (document.getElementById('modal-usd-rate') as HTMLInputElement)?.value ? parseFloat((document.getElementById('modal-usd-rate') as HTMLInputElement).value) : 0
 
+      // Close modal immediately so the page transition is visible
+      closeModal()
+
       // If it doesn't exist, we'll auto-save it after initialization
       const monthKey = `${m} ${y}`
       const isNew = !allBudgetSummary.some(b => b.id === monthKey)
@@ -2329,8 +2332,6 @@ const initializeAppService = async () => {
       if (isNew) {
         await saveCurrentBudget()
       }
-
-      closeModal()
     })
 
     // Setup global listeners
