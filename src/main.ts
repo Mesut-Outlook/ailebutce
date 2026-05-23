@@ -2064,8 +2064,6 @@ const renderWelcomeBudgetList = (budgets: BudgetRecord[]) => {
 const handleBudgetSelect = async (m: string, y: string) => {
   if (activeMonth === m && activeYear === y) return
 
-  const sel = document.getElementById('active-budget-select') as HTMLSelectElement
-
   if (isDirty) {
     await saveCurrentBudget()
   }
