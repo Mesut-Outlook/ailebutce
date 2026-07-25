@@ -110,6 +110,25 @@ Dev tarafında `npm run dev` artık `http://127.0.0.1:8080/ailebutce/` adresinde
 kök yol otomatik olarak buraya 302 ile yönlenir. `/api/db` middleware'i base'den bağımsız
 çalışmaya devam eder.
 
+### ⛔ AÇIK SORUN: Canlı sitede Firebase oturumu açılamıyor (2026-07-25)
+
+`deploy.yml` build adımına yalnızca `VITE_APP_ID` ve `VITE_FIREBASE_CONFIG` geçiliyor.
+`VITE_TEST_USER_EMAIL`, `VITE_TEST_USER_PASSWORD` ve `VITE_APP_PIN` geçilmiyor.
+
+Sonuç: `VITE_FIREBASE_CONFIG` mevcut olduğu için uygulama **Cloud Mode**'a giriyor, ancak
+otomatik giriş kimlik bilgileri `undefined` olduğundan `userId` hiç dolmuyor ve her kayıt
+denemesi `Error: User not authenticated` ile düşüyor. Canlı konsolda doğrulandı.
+
+Pages'te `/api/db` de bulunmadığı için `FileBudgetService`'e düşüş yolu da yok — yani canlı
+sitede veri kaydı şu an tamamen imkânsız.
+
+**Çözüm için gerekli:** GitHub repo ayarlarından ilgili secret'lar eklenmeli ve `deploy.yml`
+build adımının `env:` bloğuna aktarılmalı. Secret'ları yalnızca repo sahibi ekleyebilir.
+
+> **Güvenlik notu:** Bu tasarımda Firebase kullanıcı bilgileri public client bundle'ına
+> gömülür; bundle'ı indiren herkes bunları çıkarabilir. Paylaşılan tek hesap modeli
+> kullanılıyorsa bu kabul edilmiş bir risktir, ancak farkında olunmalıdır.
+
 ### 🚨 Modal Görünürlüğü — `hidden` değil `show` (2026-07-25)
 
 `.modal-overlay` varsayılan olarak `display:none`'dır ve **yalnızca `.show` sınıfı** ile açılır.

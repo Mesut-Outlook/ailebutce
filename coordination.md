@@ -28,6 +28,12 @@ Bu belge, **Aile Bütçe Takip Sistemi** projesinde yapay zeka ajanları (Claude
 - [x] **GitHub Pages `base` yolu düzeltildi** (2026-07-25) — `base: '/'` yüzünden canlı sitede
       tüm asset'ler 404 veriyor, sayfa JS/CSS'siz açılıyordu. `'/ailebutce/'` yapıldı.
 
+### 🔴 Açık Sorunlar (Engelleyici)
+- [ ] **Canlı sitede kayıt yapılamıyor:** `deploy.yml`'de `VITE_TEST_USER_EMAIL`,
+      `VITE_TEST_USER_PASSWORD` ve `VITE_APP_PIN` secret'ları build adımına geçilmediği için
+      Cloud Mode'da otomatik giriş başarısız oluyor → `Error: User not authenticated`.
+      Secret'ların repo sahibi tarafından eklenmesi gerekiyor. Detay: `MEMORY.md`.
+
 ### 🟡 Devam Eden / Sıradaki Görevler
 - [ ] **Kod Refaktörü:** `src/main.ts` monolitik yapısının modüler bileşenlere (servisler, UI renderers, kur yöneticisi) bölünmesi.
 - [ ] **Mobil Uyum & UX İyileştirmeleri:** Sürükle-bırak (drag-drop) ve grup içi sıralama etkileşimlerinin mobilde optimize edilmesi.
