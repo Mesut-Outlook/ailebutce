@@ -23,7 +23,7 @@ Aile_Butce/
 
 ```bash
 npm install
-npm run dev      # Dev server: http://127.0.0.1:8080
+npm run dev      # Dev server: http://127.0.0.1:8080/ailebutce/ (kök yol buraya yönlenir)
 npm run build    # tsc -b && vite build → dist/
 npm run lint     # eslint
 npm run preview  # dist/ üzerinden preview
@@ -129,7 +129,13 @@ window.toggleGroup = (groupId: string) => { ... }
 
 ## Build Detayları
 
-`vite.config.ts` build'de `firebase` ve `d3` paketlerini ayrı chunk'lara böler (500 kB uyarısını geçmemek için). `chunkSizeWarningLimit: 650`. Deploy: GitHub Actions `deploy.yml` → Vercel.
+`vite.config.ts` build'de `firebase` ve `d3` paketlerini ayrı chunk'lara böler (500 kB uyarısını geçmemek için). `chunkSizeWarningLimit: 650`. Deploy: GitHub Actions `deploy.yml` → **GitHub Pages**
+(https://mesut-outlook.github.io/ailebutce/).
+
+**`base` ayarı kritik:** Site bir GitHub Pages *project page*'i olduğu için `vite.config.ts`
+içinde `base: '/ailebutce/'` olmak zorundadır. `'/'` bırakılırsa build edilen `index.html`
+asset'leri kökten ister, hepsi 404 verir ve sayfa JS/CSS'siz açılır (deploy "success"
+görünmesine rağmen site tamamen ölüdür).
 
 ## Dikkat Edilmesi Gerekenler
 

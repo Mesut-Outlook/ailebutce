@@ -24,7 +24,10 @@ const getLocalIP = () => {
 // https://vite.dev/config/
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/',
+  // GitHub Pages project page: site https://<user>.github.io/ailebutce/ altında
+  // yayınlanıyor. Base '/' bırakılırsa build edilen index.html asset'leri kökten
+  // ister ve hepsi 404 verir (sayfa JS/CSS'siz açılır).
+  base: '/ailebutce/',
   plugins: [{
     name: 'local-db-plugin',
     configureServer(server) {

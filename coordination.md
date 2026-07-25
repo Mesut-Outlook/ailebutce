@@ -25,6 +25,8 @@ Bu belge, **Aile Bütçe Takip Sistemi** projesinde yapay zeka ajanları (Claude
 - [x] **KAYDET butonu arızası giderildi** (2026-07-25) — `.expense-item` sınıf çakışması nedeniyle
       `saveCurrentBudget()` sessizce `TypeError` fırlatıyordu. Detay için `MEMORY.md`.
 - [x] Üst bardaki "Yeni Ay" (`#create-new-budget-btn`) modalının açılmaması giderildi.
+- [x] **GitHub Pages `base` yolu düzeltildi** (2026-07-25) — `base: '/'` yüzünden canlı sitede
+      tüm asset'ler 404 veriyor, sayfa JS/CSS'siz açılıyordu. `'/ailebutce/'` yapıldı.
 
 ### 🟡 Devam Eden / Sıradaki Görevler
 - [ ] **Kod Refaktörü:** `src/main.ts` monolitik yapısının modüler bileşenlere (servisler, UI renderers, kur yöneticisi) bölünmesi.
@@ -52,4 +54,5 @@ Bu belge, **Aile Bütçe Takip Sistemi** projesinde yapay zeka ajanları (Claude
 | Tarih | Değişiklik / Not | Sorumlu |
 |---|---|---|
 | 2026-07-25 | `coordination.md` ve `MEMORY.md` dosyaları oluşturuldu ve güncellendi. | Antigravity AI |
+| 2026-07-25 | GitHub Pages `base` yolu `'/'` → `'/ailebutce/'` düzeltildi; canlı sitedeki asset 404'leri giderildi. `CLAUDE.md` deploy hedefi Vercel yerine GitHub Pages olarak güncellendi. | Claude (Opus 5) |
 | 2026-07-25 | KAYDET butonu arızası tespit edildi, düzeltildi ve tarayıcıda uçtan uca test edildi. `index.html` hero kutucuğu `expense-item` → `hci-expense`; `saveCurrentBudget()` DOM taraması editör konteynerleriyle kapsamlandırıldı; save click handler'ına `.catch` eklendi; `#create-new-budget-btn` modal `.show` düzeltmesi. `npm run build` başarılı. | Claude (Opus 5) |

@@ -93,6 +93,23 @@ taşıdığı için sorguya dâhil oluyor, içinde `.expense-name` input'u bulun
 3. `async` handler'lar `addEventListener`'a çıplak geçilmez; hata kullanıcıya gösterilmelidir
    (`.catch(...)` → `showAlert`). Aksi hâlde arıza tamamen sessiz kalır.
 
+### 🚨 GitHub Pages `base` Yolu (2026-07-25)
+
+Yayın hedefi **GitHub Pages project page**: `https://mesut-outlook.github.io/ailebutce/`.
+`vite.config.ts` içindeki `base` bu yüzden `'/ailebutce/'` olmalıdır.
+
+`base: '/'` iken deploy workflow'u "success" veriyordu ama build edilen `index.html`
+asset'leri kökten çağırdığı için (`/assets/index-*.js`) hepsi **404** dönüyor, site
+JS ve CSS olmadan tamamen ölü açılıyordu. Dosyalar aslında `/ailebutce/assets/` altında
+sağlamdı — sorun sadece referans yoluydu.
+
+> **Not:** Yeşil bir deploy, sitenin çalıştığı anlamına gelmez. Değişiklikten sonra canlı
+> URL'deki asset yollarının gerçekten 200 döndüğü kontrol edilmelidir.
+
+Dev tarafında `npm run dev` artık `http://127.0.0.1:8080/ailebutce/` adresinde servis eder;
+kök yol otomatik olarak buraya 302 ile yönlenir. `/api/db` middleware'i base'den bağımsız
+çalışmaya devam eder.
+
 ### 🚨 Modal Görünürlüğü — `hidden` değil `show` (2026-07-25)
 
 `.modal-overlay` varsayılan olarak `display:none`'dır ve **yalnızca `.show` sınıfı** ile açılır.
