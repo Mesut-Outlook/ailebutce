@@ -110,24 +110,40 @@ Dev tarafında `npm run dev` artık `http://127.0.0.1:8080/ailebutce/` adresinde
 kök yol otomatik olarak buraya 302 ile yönlenir. `/api/db` middleware'i base'den bağımsız
 çalışmaya devam eder.
 
-### ⛔ AÇIK SORUN: Canlı sitede Firebase oturumu açılamıyor (2026-07-25)
+### 🔐 Güvenlik Modeli — Tek Kullanıcılı Özel Bütçe (2026-07-25)
 
-`deploy.yml` build adımına yalnızca `VITE_APP_ID` ve `VITE_FIREBASE_CONFIG` geçiliyor.
-`VITE_TEST_USER_EMAIL`, `VITE_TEST_USER_PASSWORD` ve `VITE_APP_PIN` geçilmiyor.
+Site GitHub Pages üzerinde **herkese açık** bir URL'de duruyor. Bu kabul edilmiş bir durumdur;
+veriyi koruyan şey URL'in gizliliği değil, aşağıdaki katmanlardır.
 
-Sonuç: `VITE_FIREBASE_CONFIG` mevcut olduğu için uygulama **Cloud Mode**'a giriyor, ancak
-otomatik giriş kimlik bilgileri `undefined` olduğundan `userId` hiç dolmuyor ve her kayıt
-denemesi `Error: User not authenticated` ile düşüyor. Canlı konsolda doğrulandı.
+**Neyin gizli olduğu:**
 
-Pages'te `/api/db` de bulunmadığı için `FileBudgetService`'e düşüş yolu da yok — yani canlı
-sitede veri kaydı şu an tamamen imkânsız.
+| Değer | Gizli mi? | Not |
+|---|---|---|
+| `apiKey`, `projectId` (`VITE_FIREBASE_CONFIG`) | Hayır | Google bunları bilerek public yapar. Bundle'da görünmesi normaldir. |
+| Kullanıcı e-postası / şifresi | Evet — bu yüzden **asla bundle'a girmez** | Kullanıcı her cihazda bir kez elle girer. |
+| PIN (`VITE_APP_PIN`) | Koruma sağlamaz | Yalnızca istemci tarafı. **Kaldırıldı.** |
 
-**Çözüm için gerekli:** GitHub repo ayarlarından ilgili secret'lar eklenmeli ve `deploy.yml`
-build adımının `env:` bloğuna aktarılmalı. Secret'ları yalnızca repo sahibi ekleyebilir.
+**Alınan kararlar:**
 
-> **Güvenlik notu:** Bu tasarımda Firebase kullanıcı bilgileri public client bundle'ına
-> gömülür; bundle'ı indiren herkes bunları çıkarabilir. Paylaşılan tek hesap modeli
-> kullanılıyorsa bu kabul edilmiş bir risktir, ancak farkında olunmalıdır.
+1. `VITE_TEST_USER_EMAIL` / `VITE_TEST_USER_PASSWORD` ile otomatik giriş **kaldırıldı**.
+   Bundle'a şifre gömmek, siteyi açan herkese hesabı vermek demekti.
+2. PIN ekranı, gerçek Firebase e-posta+şifre giriş formuna dönüştürüldü
+   (`#login-email` + `#login-password`). Firebase oturumu tarayıcıda kalıcıdır;
+   cihaz başına bir kez giriş yeterlidir.
+3. `FirestoreBudgetService.register()` **kaldırıldı** — uygulama üzerinden yeni hesap
+   açılamaz. Hesap yalnızca Firebase Console'dan oluşturulur.
+4. Mock demo verisi tohumlaması (`runAutoSeed`) artık **yalnızca `FileBudgetService`**
+   (yerel dev) modunda çalışır. Cloud Mode'da çalışırsa 4 aylık uydurma veriyi gerçek
+   veritabanına yazıyordu; üstelik `allBudgetSummary.length > 0` kontrolü yarış koşuluna
+   açıktı (Firestore snapshot'ı gecikince liste boş görünür).
+
+**Asıl koruma Firestore Security Rules'tadır** — repoda `firestore.rules` dosyasında.
+Kullanıcı yalnızca `request.auth.uid == userId` eşleşen kendi klasörüne erişebilir.
+Bu kurallar Firebase Console → Firestore → Rules altında **publish edilmelidir**;
+repodaki dosya sadece kaynak kontrolündeki kopyadır.
+
+> Ek olarak Firebase Console → Authentication → Settings → User actions altından
+> **"Enable create (sign-up)" kapatılmalıdır**; aksi hâlde yabancı biri hesap açabilir.
 
 ### 🚨 Modal Görünürlüğü — `hidden` değil `show` (2026-07-25)
 

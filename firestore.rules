@@ -1,0 +1,30 @@
+rules_version = '2';
+
+// Aile Bütçem — Firestore Security Rules
+//
+// Bu kurallar SUNUCU tarafında çalışır ve atlanamaz. Uygulamadaki hiçbir
+// kontrol (giriş ekranı, PIN vb.) gerçek koruma sağlamaz; asıl güvenlik
+// burasıdır.
+//
+// Firebase Console → Firestore Database → Rules sekmesine yapıştırıp
+// "Publish" demen gerekir. Bu dosya yalnızca kaynak kontrolündeki kopyadır.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Uygulamanın veri yolu: artifacts/{appId}/users/{userId}/budgets/{docId}
+    //
+    // Kural: giriş yapmış kullanıcı YALNIZCA kendi userId klasörüne erişebilir.
+    // Başka biri hesap açsa bile senin verini ne okuyabilir ne de yazabilir.
+    match /artifacts/{appId}/users/{userId}/{document=**} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == userId;
+    }
+
+    // Yukarıdaki eşleşme dışındaki her şey reddedilir (varsayılan davranış).
+    // Açıkça yazmaya gerek yok, ancak niyet belli olsun diye bırakıldı:
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

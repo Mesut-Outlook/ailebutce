@@ -28,11 +28,12 @@ Bu belge, **Aile Bütçe Takip Sistemi** projesinde yapay zeka ajanları (Claude
 - [x] **GitHub Pages `base` yolu düzeltildi** (2026-07-25) — `base: '/'` yüzünden canlı sitede
       tüm asset'ler 404 veriyor, sayfa JS/CSS'siz açılıyordu. `'/ailebutce/'` yapıldı.
 
-### 🔴 Açık Sorunlar (Engelleyici)
-- [ ] **Canlı sitede kayıt yapılamıyor:** `deploy.yml`'de `VITE_TEST_USER_EMAIL`,
-      `VITE_TEST_USER_PASSWORD` ve `VITE_APP_PIN` secret'ları build adımına geçilmediği için
-      Cloud Mode'da otomatik giriş başarısız oluyor → `Error: User not authenticated`.
-      Secret'ların repo sahibi tarafından eklenmesi gerekiyor. Detay: `MEMORY.md`.
+### 🔴 Repo Sahibinin Firebase Console'da Yapması Gerekenler
+- [ ] `firestore.rules` içeriğini Firebase Console → Firestore Database → Rules'a yapıştır ve **Publish** et.
+- [ ] Authentication → Settings → User actions → **"Enable create (sign-up)" kapat**.
+- [ ] Authentication → Users altında kendi hesabının var olduğunu doğrula (yoksa oradan oluştur).
+
+> Bu üç adım yapılmadan veri gerçek anlamda korunmuş olmaz. Kod tarafı hazır.
 
 ### 🟡 Devam Eden / Sıradaki Görevler
 - [ ] **Kod Refaktörü:** `src/main.ts` monolitik yapısının modüler bileşenlere (servisler, UI renderers, kur yöneticisi) bölünmesi.
@@ -60,5 +61,6 @@ Bu belge, **Aile Bütçe Takip Sistemi** projesinde yapay zeka ajanları (Claude
 | Tarih | Değişiklik / Not | Sorumlu |
 |---|---|---|
 | 2026-07-25 | `coordination.md` ve `MEMORY.md` dosyaları oluşturuldu ve güncellendi. | Antigravity AI |
+| 2026-07-25 | Güvenlik: gömülü kimlik bilgisiyle otomatik giriş kaldırıldı, gerçek Firebase e-posta+şifre giriş ekranı eklendi, `register()` kaldırıldı, mock seed yalnızca yerel moda kısıtlandı, `firestore.rules` eklendi. | Claude (Opus 5) |
 | 2026-07-25 | GitHub Pages `base` yolu `'/'` → `'/ailebutce/'` düzeltildi; canlı sitedeki asset 404'leri giderildi. `CLAUDE.md` deploy hedefi Vercel yerine GitHub Pages olarak güncellendi. | Claude (Opus 5) |
 | 2026-07-25 | KAYDET butonu arızası tespit edildi, düzeltildi ve tarayıcıda uçtan uca test edildi. `index.html` hero kutucuğu `expense-item` → `hci-expense`; `saveCurrentBudget()` DOM taraması editör konteynerleriyle kapsamlandırıldı; save click handler'ına `.catch` eklendi; `#create-new-budget-btn` modal `.show` düzeltmesi. `npm run build` başarılı. | Claude (Opus 5) |

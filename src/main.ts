@@ -5,7 +5,6 @@ import {
   getAuth,
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signOut,
   type Auth,
 } from 'firebase/auth'
@@ -444,9 +443,8 @@ class FirestoreBudgetService implements BudgetService {
     await signInWithEmailAndPassword(this.auth, email, pass)
   }
 
-  async register(email: string, pass: string) {
-    await createUserWithEmailAndPassword(this.auth, email, pass)
-  }
+  // register() bilinçli olarak kaldırıldı: uygulama üzerinden yeni hesap açılamaz.
+  // Hesap yalnızca Firebase Console'dan oluşturulur (bkz. MEMORY.md güvenlik notu).
 
   async logout() {
     await signOut(this.auth)
@@ -2123,13 +2121,25 @@ const initializeAppService = async () => {
 
     loadingOverlay.classList.add('hidden')
     
-    // --- PIN-BASED AUTH FLOW ---
+    // --- AUTH FLOW ---
+    // Cloud Mode'da gerçek Firebase e-posta/şifre girişi kullanılır. Hiçbir kimlik
+    // bilgisi bundle'a gömülmez — site herkese açık olsa bile veriye yalnızca şifreyi
+    // bilen erişebilir. Asıl koruma Firestore Security Rules'tadır (bkz. MEMORY.md).
     const isCloudMode = budgetService instanceof FirestoreBudgetService
-    const appPin = (import.meta.env.VITE_APP_PIN as string | undefined) || ''
-    const isPinVerified = sessionStorage.getItem('pin_verified') === 'true'
 
-    // If PIN is set and not yet verified this session, always show PIN screen first
-    if (appPin && !isPinVerified) {
+    const enterApp = () => {
+      document.getElementById('login-page')?.classList.add('hidden')
+      document.getElementById('app-container')?.classList.remove('hidden')
+      userIdDisplay.textContent = budgetService!.getUserId() || 'Yerel'
+      document.getElementById('profile-user-id')!.textContent = budgetService!.getUserId() || 'Bilinmiyor'
+      finishAppInit()
+    }
+
+    // Yerel dosya modunda (dev) kimlik doğrulama yok; oturum kalıcı olduğu için
+    // Cloud Mode'da da önceden giriş yapılmışsa doğrudan içeri alınır.
+    if (!isCloudMode || budgetService.getUserId()) {
+      enterApp()
+    } else {
       document.getElementById('login-page')?.classList.remove('hidden')
       document.getElementById('app-container')?.classList.add('hidden')
 
@@ -2137,78 +2147,36 @@ const initializeAppService = async () => {
       loginForm?.addEventListener('submit', async (e) => {
         e.preventDefault()
         const btn = document.getElementById('login-btn') as HTMLButtonElement
-        const enteredPin = (document.getElementById('login-password') as HTMLInputElement).value
+        const emailInput = document.getElementById('login-email') as HTMLInputElement
+        const passInput = document.getElementById('login-password') as HTMLInputElement
         const err = document.getElementById('login-error')
 
-        if (enteredPin !== appPin) {
-          if (err) err.textContent = '❌ Hatalı şifre. Tekrar deneyin.'
-          ;(document.getElementById('login-password') as HTMLInputElement).value = ''
-          if (btn) btn.textContent = 'Giriş Yap'
+        const email = emailInput.value.trim()
+        const pass = passInput.value
+        if (!email || !pass) return
+
+        if (btn) { btn.textContent = 'Bağlanıyor...'; btn.disabled = true }
+        if (err) err.textContent = ''
+
+        try {
+          await (budgetService as FirestoreBudgetService).login(email, pass)
+        } catch (fbError) {
+          // Hesap oluşturma bilinçli olarak yok: yalnızca mevcut hesap giriş yapabilir.
+          const code = (fbError as { code?: string }).code
+          if (err) {
+            err.textContent = (code === 'auth/invalid-credential' || code === 'auth/user-not-found' || code === 'auth/wrong-password')
+              ? '❌ E-posta veya şifre hatalı.'
+              : 'Giriş yapılamadı: ' + (fbError as Error).message
+          }
+          passInput.value = ''
+          if (btn) { btn.textContent = 'Giriş Yap'; btn.disabled = false }
           return
         }
 
-        // PIN is correct — mark session and proceed to Firebase login
-        sessionStorage.setItem('pin_verified', 'true')
-        if (btn) btn.textContent = 'Bağlanıyor...'
-        if (err) err.textContent = ''
-
-        if (isCloudMode && !budgetService!.getUserId()) {
-          // Auto-login to Firebase with env credentials (hidden from user)
-          const autoEmail = import.meta.env.VITE_TEST_USER_EMAIL as string | undefined
-          const autoPass = import.meta.env.VITE_TEST_USER_PASSWORD as string | undefined
-
-          if (!autoEmail || !autoPass) {
-            if (err) err.textContent = 'Yapılandırma hatası: Firebase kimlik bilgileri eksik.'
-            sessionStorage.removeItem('pin_verified')
-            if (btn) btn.textContent = 'Giriş Yap'
-            return
-          }
-
-          try {
-            await (budgetService as FirestoreBudgetService).login(autoEmail, autoPass)
-          } catch (fbError: any) {
-            // If user doesn't exist, create it
-            if (fbError.code === 'auth/user-not-found' || fbError.code === 'auth/invalid-credential') {
-              try {
-                await (budgetService as FirestoreBudgetService).register(autoEmail, autoPass)
-              } catch (regError: any) {
-                if (err) err.textContent = 'Firebase bağlantı hatası: ' + regError.message
-                sessionStorage.removeItem('pin_verified')
-                if (btn) btn.textContent = 'Giriş Yap'
-                return
-              }
-            } else {
-              if (err) err.textContent = 'Firebase hatası: ' + fbError.message
-              sessionStorage.removeItem('pin_verified')
-              if (btn) btn.textContent = 'Giriş Yap'
-              return
-            }
-          }
-        }
-
-        // All auth passed — show app
-        document.getElementById('login-page')?.classList.add('hidden')
-        document.getElementById('app-container')?.classList.remove('hidden')
-        userIdDisplay.textContent = budgetService!.getUserId() || 'Yerel'
-        document.getElementById('profile-user-id')!.textContent = budgetService!.getUserId() || 'Bilinmiyor'
-        finishAppInit()
+        passInput.value = ''
+        if (btn) { btn.textContent = 'Giriş Yap'; btn.disabled = false }
+        enterApp()
       })
-    } else {
-      // No PIN configured, or session already verified — go straight in
-      if (isCloudMode && !budgetService.getUserId()) {
-        // Still need Firebase login if not authenticated
-        const autoEmail = import.meta.env.VITE_TEST_USER_EMAIL as string | undefined
-        const autoPass = import.meta.env.VITE_TEST_USER_PASSWORD as string | undefined
-        if (autoEmail && autoPass) {
-          try {
-            await (budgetService as FirestoreBudgetService).login(autoEmail, autoPass)
-          } catch (_) { /* ignore, subscribe will handle it */ }
-        }
-      }
-      document.getElementById('app-container')?.classList.remove('hidden')
-      userIdDisplay.textContent = budgetService.getUserId() || 'Yerel'
-      document.getElementById('profile-user-id')!.textContent = budgetService.getUserId() || 'Bilinmiyor'
-      finishAppInit()
     }
 
     function finishAppInit() {
@@ -2442,6 +2410,15 @@ const runAutoSeed = async () => {
     }
   } catch (err) {
     console.log("Could not load /api/db for migration, falling back to mock seed.", err);
+  }
+
+  // Sahte demo verisi YALNIZCA yerel dosya modunda (npm run dev) üretilir.
+  // Cloud Mode'da bu blok çalışırsa 4 aylık uydurma veri gerçek Firestore
+  // veritabanına yazılır. Ayrıca allBudgetSummary kontrolü yarış koşuluna açıktır:
+  // Firestore snapshot'ı henüz gelmemişken liste boş görünür.
+  if (!(budgetService instanceof FileBudgetService)) {
+    console.log("Cloud Mode: mock seed atlandı (gerçek veritabanı korunuyor).");
+    return;
   }
 
   console.log("Local DB empty or not found. Auto-seeding 4 months of mock data...");
