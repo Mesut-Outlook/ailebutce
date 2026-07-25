@@ -363,15 +363,7 @@ class FileBudgetService implements BudgetService {
       })
       this.cache = budgets
       this.notify()
-      // Success feedback for manual verification
-      // Use simple timeout to prevent blocking UI too much or annoying on auto-save (if any)
-      // But user requested "Verify save button", so an explicit alert is good for now.
-      // We can check if it was triggered manually? For now, simple alert.
-      // Actually, let's use a non-blocking toast or console + maybe only alert if it takes long? 
-      // User asked "Make sure save button works". 
-      // Let's add:
       console.log('Veriler başarıyla db.json dosyasına yazıldı.')
-      showToast('Bütçe Başarıyla Kaydedildi!', 'success')
     } catch (error) {
       console.error('Failed to save budgets', error)
       showAlert('HATA: Veri dosyaya yazılamadı! Sunucu çalışıyor mu?', 'Hata', 'error')
@@ -1173,11 +1165,22 @@ const saveCurrentBudget = async () => {
 
   const details: BudgetDetail[] = []
 
-  // Scan DOM
-  document.querySelectorAll('.expense-item').forEach(item => {
-    const name = (item.querySelector('.expense-name') as HTMLInputElement).value
-    const amount = parseFloat((item.querySelector('.expense-amount') as HTMLInputElement).value) || 0
-    const currency = (item.querySelector('.expense-currency') as HTMLSelectElement).value as Currency
+  // Scan only the editor's group containers. A global '.expense-item' query also
+  // matches decorative elements elsewhere in the document (e.g. the landing hero
+  // tiles), whose missing inputs would throw and abort the whole save.
+  const itemRows = ['income-groups-container', 'expense-groups-container', 'turkiye-groups-container']
+    .flatMap(id => [...(document.getElementById(id)?.querySelectorAll('.expense-item') ?? [])])
+
+  itemRows.forEach(item => {
+    const nameEl = item.querySelector('.expense-name') as HTMLInputElement
+    const amountEl = item.querySelector('.expense-amount') as HTMLInputElement
+    const currencyEl = item.querySelector('.expense-currency') as HTMLSelectElement
+
+    if (!nameEl || !amountEl) return // Skip invalid elements safely
+
+    const name = nameEl.value
+    const amount = parseFloat(amountEl.value) || 0
+    const currency = (currencyEl?.value || 'EUR') as Currency
     const isFixed = (item.querySelector('.expense-fixed') as HTMLInputElement)?.checked || false
     const paymentDayInput = item.querySelector('.expense-day') as HTMLInputElement
     const paymentDay = paymentDayInput && paymentDayInput.value ? parseInt(paymentDayInput.value) : undefined
@@ -1244,9 +1247,10 @@ const saveCurrentBudget = async () => {
   try {
     await budgetService.saveBudget(record)
     setDirty(false)
+    showToast('Değişiklikler başarıyla kaydedildi!', 'success')
   } catch (error) {
     console.error('Save error:', error)
-    showAlert('Kaydetme hatası', 'Hata', 'error')
+    showAlert('Kaydetme hatası: ' + (error as Error).message, 'Hata', 'error')
   }
 }
 
@@ -1310,7 +1314,13 @@ const setupButtons = () => {
   })
 
   document.getElementById('toggle-all-btn')?.addEventListener('click', toggleAllGroups)
-  document.getElementById('save-budget-btn')?.addEventListener('click', saveCurrentBudget)
+  document.getElementById('save-budget-btn')?.addEventListener('click', () => {
+    // Surface failures: an unawaited rejection here would make the button look dead.
+    saveCurrentBudget().catch(error => {
+      console.error('Save error:', error)
+      showAlert('Kaydetme hatası: ' + (error as Error).message, 'Hata', 'error')
+    })
+  })
 
   const goHomeLogic = async () => {
     if (isDirty) {
@@ -2294,7 +2304,10 @@ const initializeAppService = async () => {
       // Reset modal state when opening
       if (modalRateInput) modalRateInput.value = ''
       rateSourceInfo?.classList.add('hidden')
+      // .modal-overlay is display:none until '.show' is added; removing 'hidden' alone
+      // leaves the dialog invisible.
       modal?.classList.remove('hidden')
+      modal?.classList.add('show')
     })
 
     const closeModal = () => {
