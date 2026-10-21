@@ -150,3 +150,18 @@ repodaki dosya sadece kaynak kontrolündeki kopyadır.
 `.modal-overlay` varsayılan olarak `display:none`'dır ve **yalnızca `.show` sınıfı** ile açılır.
 `classList.remove('hidden')` tek başına modalı görünür yapmaz. Üst bardaki
 `#create-new-budget-btn` bu yüzden çalışmıyordu.
+
+### 📱 Mobil Öncelikli Yeniden Tasarım (2026-10-22)
+
+Arayüz baştan yazıldı. Amaç: telefondan "bu ay Türkiye'ye ne kadar göndereceğim" ve "düzenli ödemelerim ödendi mi" sorularını tek ekranda cevaplamak.
+
+- **Dosyalar:** `src/budget.ts` (saf hesap mantığı, DOM'suz) + `src/budget.test.ts` (`node src/budget.test.ts`) + `src/main.ts` (~470 satır arayüz) + `src/style.css` (düz CSS, Tailwind ve D3 kaldırıldı).
+- **Kaydet butonu yok:** her işlem (ekle, düzenle, ödendi işareti, kur) anında `service.saveBudget()` ile yazılır. Eski dirty-state sistemi kaldırıldı.
+- **Olaylar:** `window.*` global callback'leri yerine `data-act` öznitelikleriyle tek bir `document` click dinleyicisi (event delegation). Yeni buton = `actions` nesnesine bir anahtar.
+- **Veri uyumu:** Firestore doküman yapısı aynı (`"Ekim 2026"` ID'leri). Eklenen opsiyonel alanlar: `BudgetDetail.paid`, `BudgetRecord.trBalanceTRY`, `BudgetRecord.transferSent`; `ExpenseType`'a `'ONCE'` (sadece bu ay) eklendi. Eski toplam alanları (`totalTurkiyeTL` vb.) `withStoredTotals()` ile her kayıtta doldurulmaya devam eder; ekran ise her zaman `details`'ten hesaplar.
+- **Türkiye hesabı:** Türkiye grubundaki tüm kalemler TL'ye çevrilip toplanır (EUR kalem × kur, USD × usdRate), Türkiye hesabında duran bakiye düşülür, sonuç EUR kuruna bölünür → `sendEUR`.
+- **Yeni ay:** `monthFrom()` önceki aydaki `ONCE` dışındaki tüm kalemleri kopyalar (değişkenler de dahil, tutarları önceki aydan), `paid` sıfırlanır, kur Frankfurter'dan çekilir.
+- **Tutar girişi:** `parseAmount()` TR/NL yazımını izler: `6.200` → 6200, `95,68` → 95.68, `1.234,56` → 1234.56. Virgül yoksa ve noktalar 3'lü grup ayırıyorsa binliktir.
+- **Firestore `undefined`:** `initializeFirestore(app, { ignoreUndefinedProperties: true })` kullanılır; aksi hâlde boş `paymentDay` yazmayı reddeder.
+- **Eskiyen kurallar:** "CSS sınıf adı çakışması" ve "modal `.show`" notları eski arayüze aitti; yeni kodda global satır taraması ve `.modal-overlay` yok. Alt pencereler native `<dialog>` (`showModal()`).
+- **PWA:** `public/manifest.webmanifest` + ikonlar; service worker yok (Chrome/iOS ana ekrana ekleme için gerekmiyor). Yazı tipi: Familjen Grotesk (₺ glifi var; Schibsted Grotesk'te yoktu).

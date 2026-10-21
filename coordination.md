@@ -28,6 +28,8 @@ Bu belge, **Aile Bütçe Takip Sistemi** projesinde yapay zeka ajanları (Claude
 - [x] **GitHub Pages `base` yolu düzeltildi** (2026-07-25) — `base: '/'` yüzünden canlı sitede
       tüm asset'ler 404 veriyor, sayfa JS/CSS'siz açılıyordu. `'/ailebutce/'` yapıldı.
 
+- [x] **Mobil öncelikli yeniden tasarım** (2026-10-22) — dekont tarzı "Türkiye'ye gönder" ekranı, ödendi işaretleri, otomatik kayıt, Geçmiş sekmesi, PWA. Detay: `MEMORY.md`.
+
 ### 🔴 Repo Sahibinin Firebase Console'da Yapması Gerekenler
 - [ ] `firestore.rules` içeriğini Firebase Console → Firestore Database → Rules'a yapıştır ve **Publish** et.
 - [ ] Authentication → Settings → User actions → **"Enable create (sign-up)" kapat**.
@@ -36,9 +38,7 @@ Bu belge, **Aile Bütçe Takip Sistemi** projesinde yapay zeka ajanları (Claude
 > Bu üç adım yapılmadan veri gerçek anlamda korunmuş olmaz. Kod tarafı hazır.
 
 ### 🟡 Devam Eden / Sıradaki Görevler
-- [ ] **Kod Refaktörü:** `src/main.ts` monolitik yapısının modüler bileşenlere (servisler, UI renderers, kur yöneticisi) bölünmesi.
-- [ ] **Mobil Uyum & UX İyileştirmeleri:** Sürükle-bırak (drag-drop) ve grup içi sıralama etkileşimlerinin mobilde optimize edilmesi.
-- [ ] **Offline / PWA Desteği:** Yerel depolama esnekliğini artırmak için PWA (Progressive Web App) desteği eklenmesi.
+- [ ] **Banka/kart ekstresi yükleme:** ABN AMRO hesap hareketleri ve kredi kartı ekstrelerini içe aktarıp kalemlerle eşleştirerek otomatik "ödendi" işaretleme.
 - [ ] **Gelişmiş Raporlama:** Yıllık karşılaştırmalı bütçe özetleri ve kategori bazlı bütçe limiti uyarıları.
 
 ---
@@ -64,3 +64,4 @@ Bu belge, **Aile Bütçe Takip Sistemi** projesinde yapay zeka ajanları (Claude
 | 2026-07-25 | Güvenlik: gömülü kimlik bilgisiyle otomatik giriş kaldırıldı, gerçek Firebase e-posta+şifre giriş ekranı eklendi, `register()` kaldırıldı, mock seed yalnızca yerel moda kısıtlandı, `firestore.rules` eklendi. | Claude (Opus 5) |
 | 2026-07-25 | GitHub Pages `base` yolu `'/'` → `'/ailebutce/'` düzeltildi; canlı sitedeki asset 404'leri giderildi. `CLAUDE.md` deploy hedefi Vercel yerine GitHub Pages olarak güncellendi. | Claude (Opus 5) |
 | 2026-07-25 | KAYDET butonu arızası tespit edildi, düzeltildi ve tarayıcıda uçtan uca test edildi. `index.html` hero kutucuğu `expense-item` → `hci-expense`; `saveCurrentBudget()` DOM taraması editör konteynerleriyle kapsamlandırıldı; save click handler'ına `.catch` eklendi; `#create-new-budget-btn` modal `.show` düzeltmesi. `npm run build` başarılı. | Claude (Opus 5) |
+| 2026-10-22 | Mobil öncelikli yeniden tasarım: `main.ts` baştan yazıldı (~470 satır), hesap mantığı `budget.ts`'e ayrıldı ve testlendi, Tailwind + D3 kaldırıldı, anında kayıt, ödendi işaretleri, Türkiye hesabı bakiyesi, PWA manifest. Veri yapısı geriye uyumlu. | Claude (Opus 5.5) |

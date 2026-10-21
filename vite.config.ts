@@ -2,26 +2,7 @@ import { defineConfig } from 'vite'
 
 import fs from 'fs'
 import path from 'path'
-import os from 'os'
 
-const getLocalIP = () => {
-  const interfaces = os.networkInterfaces();
-  if (interfaces) {
-    for (const name of Object.keys(interfaces)) {
-      const net = interfaces[name]
-      if (net) {
-        for (const iface of net) {
-          if (iface.family === 'IPv4' && !iface.internal) {
-            return iface.address;
-          }
-        }
-      }
-    }
-  }
-  return 'localhost';
-};
-
-// https://vite.dev/config/
 // https://vite.dev/config/
 export default defineConfig({
   // GitHub Pages project page: site https://<user>.github.io/ailebutce/ altında
@@ -31,9 +12,6 @@ export default defineConfig({
   plugins: [{
     name: 'local-db-plugin',
     configureServer(server) {
-      const ip = getLocalIP();
-      console.log(`\n  📱 MOBİL ERİŞİM İÇİN: http://${ip}:3000\n`);
-
       server.middlewares.use((req, res, next) => {
         if (req.url?.startsWith('/api/db')) {
           const dbPath = path.resolve(process.cwd(), 'db.json')
@@ -96,7 +74,6 @@ export default defineConfig({
       output: {
         manualChunks: {
           firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
-          d3: ['d3'],
         },
       },
     },
