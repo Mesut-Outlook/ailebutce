@@ -165,3 +165,9 @@ Arayüz baştan yazıldı. Amaç: telefondan "bu ay Türkiye'ye ne kadar gönder
 - **Firestore `undefined`:** `initializeFirestore(app, { ignoreUndefinedProperties: true })` kullanılır; aksi hâlde boş `paymentDay` yazmayı reddeder.
 - **Eskiyen kurallar:** "CSS sınıf adı çakışması" ve "modal `.show`" notları eski arayüze aitti; yeni kodda global satır taraması ve `.modal-overlay` yok. Alt pencereler native `<dialog>` (`showModal()`).
 - **PWA:** `public/manifest.webmanifest` + ikonlar; service worker yok (Chrome/iOS ana ekrana ekleme için gerekmiyor). Yazı tipi: Familjen Grotesk (₺ glifi var; Schibsted Grotesk'te yoktu).
+
+## Planlanan veri alanları (2026-10-25)
+
+- `BudgetRecord.categoryLimits?: Record<string, number>` (EUR, subGroup anahtarlı) — `monthFrom()` ile önceki aydan kopyalanır.
+- `BudgetRecord.importedHashes?: string[]` — ekstre içe aktarmada çift kayıt koruması (Aşama 2).
+- Ayrıntı ve sıra: `docs/gelistirme-plani.md`.

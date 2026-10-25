@@ -30,3 +30,4 @@ butce_ozeti.md
 migrate.js
 migrate_no_deps.js
 history/
+*.csv

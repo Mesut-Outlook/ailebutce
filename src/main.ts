@@ -3,8 +3,8 @@ import { initializeApp } from 'firebase/app'
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, type Auth } from 'firebase/auth'
 import { collection, deleteDoc, doc, initializeFirestore, onSnapshot, setDoc, type Firestore } from 'firebase/firestore'
 import {
-  byDay, MONTHS, monthFrom, monthIndex, monthKey, newId, parseAmount, parseMonthKey, shiftMonth, totals, withStoredTotals,
-  type BudgetDetail, type BudgetRecord, type Currency, type ExpenseType, type GroupType,
+  byDay, categoryTotals, MONTHS, monthFrom, monthIndex, monthKey, newId, parseAmount, parseMonthKey, shiftMonth, totals, withStoredTotals,
+  yearReport, type BudgetDetail, type BudgetRecord, type Currency, type ExpenseType, type GroupType,
 } from './budget.ts'
 
 // --- VERİ SERVİSLERİ ---------------------------------------------------------
@@ -106,6 +106,7 @@ const todayKey = monthKey(now.getMonth(), now.getFullYear())
 let budgets: BudgetRecord[] = []
 let tab: 'month' | 'history' = 'month'
 let cursor = todayKey
+let historyYear = now.getFullYear()
 
 const cur = () => budgets.find((b) => b.id === cursor)
 
@@ -180,7 +181,10 @@ const render = () => {
        <h1><span>${monthName(cursor)}</span> ${parseMonthKey(cursor).y}</h1>
        <button class="icon-btn" data-act="shift" data-d="1" aria-label="Sonraki ay">${svg('next')}</button>
        <button class="icon-btn end" data-act="settings" aria-label="Ayarlar">${svg('gear')}</button>`
-    : `<h1>Geçmiş</h1><button class="icon-btn end" data-act="settings" aria-label="Ayarlar">${svg('gear')}</button>`
+    : `<button class="icon-btn" data-act="year-shift" data-d="-1" aria-label="Önceki yıl">${svg('prev')}</button>
+       <h1><span>${historyYear}</span> Yılı</h1>
+       <button class="icon-btn" data-act="year-shift" data-d="1" aria-label="Sonraki yıl">${svg('next')}</button>
+       <button class="icon-btn end" data-act="settings" aria-label="Ayarlar">${svg('gear')}</button>`
   $('view').innerHTML = tab === 'history' ? historyView() : b ? monthView(b) : emptyMonthView()
   document.querySelectorAll<HTMLElement>('[data-tab]').forEach((t) => t.setAttribute('aria-current', String(t.dataset.tab === tab)))
 }
@@ -222,8 +226,51 @@ const monthView = (b: BudgetRecord) => {
     </dl>
   </section>
 
+  ${categoriesView(b)}
+
   ${GROUPS.map((g) => groupView(b, g)).join('')}
   `
+}
+
+const categoriesView = (b: BudgetRecord) => {
+  const cats = categoryTotals(b)
+  if (!cats.length) return ''
+  const t = totals(b)
+  const totalSpent = t.nlEUR + t.trEUR
+  return `
+  <section class="group g-CATS" aria-label="Kategori dağılımı ve bütçe limitleri">
+    <header>
+      <h2>Kategori dağılımı</h2>
+      <span class="total">${money(totalSpent, 'EUR', 0)}</span>
+      <span class="progress">Toplam ${cats.length} kategori · limit için dokunun</span>
+    </header>
+    <ul class="cat-list">
+      ${cats.map((c) => `
+        <li class="row cat-row">
+          <button class="row-main cat-btn" data-act="cat-limit" data-cat="${esc(c.name)}">
+            <div class="cat-top">
+              <span class="name">${esc(c.name)}</span>
+              <span class="amt">${money(c.totalEUR, 'EUR', 0)}</span>
+            </div>
+            <div class="cat-bar-wrap">
+              <span class="cat-bar ${c.isOverLimit ? 'over' : ''}" style="width:${Math.min(100, Math.max(2, c.pct)).toFixed(1)}%"></span>
+            </div>
+            <div class="cat-bottom">
+              <div class="cat-badges">
+                ${c.isOverLimit
+                  ? `<span class="badge warn">Limit aşıldı (+${money(c.totalEUR - c.limitEUR!, 'EUR', 0)})</span>`
+                  : c.limitEUR !== undefined
+                    ? `<span class="badge ok">Hedef limit: ${money(c.limitEUR, 'EUR', 0)}</span>`
+                    : '<span class="badge hint">Limit belirle</span>'
+                }
+              </div>
+              <span class="cat-pct">%${c.pct.toFixed(1)}</span>
+            </div>
+          </button>
+        </li>
+      `).join('')}
+    </ul>
+  </section>`
 }
 
 const groupView = (b: BudgetRecord, g: (typeof GROUPS)[number]) => {
@@ -282,27 +329,87 @@ const emptyMonthView = () => {
 }
 
 const historyView = () => {
-  if (!budgets.length) return '<section class="empty"><h2>Henüz kayıtlı ay yok</h2></section>'
-  const sorted = [...budgets].sort((a, b) => monthIndex(b.id) - monthIndex(a.id))
-  const rows = sorted.map((b) => ({ b, t: totals(b) }))
-  const max = Math.max(...rows.map((r) => Math.max(r.t.nlEUR + r.t.trEUR, r.t.incomeEUR))) || 1
-  const years = [...new Set(rows.map((r) => parseMonthKey(r.b.id).y))]
-  return years.map((y) => {
-    const inYear = rows.filter((r) => parseMonthKey(r.b.id).y === y)
-    const sent = inYear.reduce((s, r) => s + r.t.sendEUR, 0)
-    return `
-    <section class="year">
-      <header><h2>${y}</h2><p>Türkiye’ye toplam <b>${money(sent, 'EUR', 0)}</b></p></header>
-      <ul>${inYear.map(({ b, t }) => `
-        <li><button class="hist-row" data-act="open" data-key="${esc(b.id)}">
-          <span class="hist-month">${monthName(b.id)}</span>
-          <span class="bar"><i class="nl" style="width:${(t.nlEUR / max) * 100}%"></i><i class="tr" style="width:${(t.trEUR / max) * 100}%"></i></span>
-          <span class="hist-nums"><span class="tr-text">${money(t.sendEUR, 'EUR', 0)}</span><span class="${t.leftEUR < 0 ? 'neg' : ''}">kalan ${money(t.leftEUR, 'EUR', 0)}</span></span>
-        </button></li>`).join('')}
-      </ul>
-    </section>`
-  }).join('')
+  const rep = yearReport(historyYear, budgets)
+  const activeCount = rep.rows.filter((r) => r.record).length
+
+  return `
+  <section class="year-summary" aria-label="${historyYear} yılı özeti">
+    <div class="year-cards">
+      <div class="card">
+        <span class="card-label">Gelir</span>
+        <strong class="card-val">${money(rep.totalIncomeEUR, 'EUR', 0)}</strong>
+      </div>
+      <div class="card">
+        <span class="card-label">Hollanda</span>
+        <strong class="card-val">${money(rep.totalNlEUR, 'EUR', 0)}</strong>
+      </div>
+      <div class="card">
+        <span class="card-label">Türkiye</span>
+        <strong class="card-val tr-text">${money(rep.totalTrEUR, 'EUR', 0)}</strong>
+      </div>
+      <div class="card">
+        <span class="card-label">Kalan</span>
+        <strong class="card-val ${rep.totalLeftEUR < 0 ? 'neg' : ''}">${money(rep.totalLeftEUR, 'EUR', 0)}</strong>
+      </div>
+    </div>
+    <div class="year-foot">
+      <span>Türkiye’ye gönderilen: <b>${money(rep.totalSendEUR, 'EUR', 0)}</b></span>
+      <span>${activeCount}/12 ay kayıtlı</span>
+    </div>
+  </section>
+
+  <section class="group year-table-sec" aria-label="${historyYear} aylık karşılaştırma">
+    <header>
+      <h2>Aylık Karşılaştırma</h2>
+      <span class="total">${money(rep.totalExpenseEUR, 'EUR', 0)}</span>
+      <span class="progress">Toplam yıllık harcama</span>
+    </header>
+    <ul class="year-table">
+      ${rep.rows.map((r) => {
+        if (!r.record || !r.totals) {
+          return `
+          <li class="row year-row empty-row">
+            <button class="row-main hist-row-btn" data-act="open" data-key="${esc(r.key)}" aria-label="${r.key} ayını aç">
+              <span class="hist-month">${r.monthName}</span>
+              <span class="empty-bar-wrap"><span class="empty-bar"></span></span>
+              <span class="hist-nums"><span class="empty-text">Kayıt yok</span></span>
+            </button>
+          </li>`
+        }
+        const t = r.totals
+        const max = rep.maxMonthEUR
+        return `
+        <li class="row year-row">
+          <button class="row-main hist-row-btn" data-act="open" data-key="${esc(r.key)}" aria-label="${r.key} detayını aç">
+            <span class="hist-month">${r.monthName}</span>
+            <span class="bar" role="img" aria-label="Hollanda ve Türkiye harcaması">
+              <i class="nl" style="width:${((t.nlEUR / max) * 100).toFixed(1)}%"></i>
+              <i class="tr" style="width:${((t.trEUR / max) * 100).toFixed(1)}%"></i>
+            </span>
+            <span class="hist-nums">
+              <span class="val-main">${money(t.nlEUR + t.trEUR, 'EUR', 0)}</span>
+              <span class="val-sub ${t.leftEUR < 0 ? 'neg' : ''}">kalan ${money(t.leftEUR, 'EUR', 0)}</span>
+            </span>
+          </button>
+        </li>`
+      }).join('')}
+    </ul>
+  </section>`
 }
+
+const limitSheet = (name: string, limit?: number) => openSheet(`
+  <input type="hidden" name="form" value="cat-limit">
+  <input type="hidden" name="cat" value="${esc(name)}">
+  <h2>${esc(name)} Limiti</h2>
+  <p class="hint">Bu kategori için aylık harcama hedefini belirleyin. Limit aşıldığında uyarı rozeti görünür.</p>
+  <label class="field"><span>Aylık Hedef Limit (€)</span>
+    <input name="limit" inputmode="decimal" value="${limit ? esc(num(limit).replace('.', ',')) : ''}" placeholder="Örn: 500" autocomplete="off" autofocus>
+  </label>
+  <div class="actions">
+    ${limit ? `<button type="button" class="danger" data-act="delete-cat-limit" data-cat="${esc(name)}">Limiti Kaldır</button>` : ''}
+    <button type="button" class="ghost" data-act="close">Vazgeç</button>
+    <button class="primary">Kaydet</button>
+  </div>`)
 
 // --- ALT PENCERELER (native <dialog>) -------------------------------------------
 
@@ -373,10 +480,27 @@ const settingsSheet = () => {
 
 const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   shift: (el) => { cursor = shiftMonth(cursor, Number(el.dataset.d)); render() },
+  'year-shift': (el) => { historyYear += Number(el.dataset.d); render() },
   open: (el) => { cursor = el.dataset.key!; tab = 'month'; render(); scrollTo(0, 0) },
   settings: settingsSheet,
   close: () => sheet().close(),
   rate: () => rateSheet(cur()!),
+  'cat-limit': (el) => {
+    const cat = el.dataset.cat
+    if (!cat) return
+    const b = cur()
+    if (!b) return
+    limitSheet(cat, b.categoryLimits?.[cat])
+  },
+  'delete-cat-limit': (el) => {
+    const cat = el.dataset.cat
+    const b = cur()
+    if (!cat || !b) return
+    const limits = { ...(b.categoryLimits || {}) }
+    delete limits[cat]
+    sheet().close()
+    return save({ ...b, categoryLimits: limits })
+  },
   add: (el) => itemSheet({ group: (el.dataset.group as GroupType) || 'TURKIYE' }),
   edit: (el) => { const d = cur()?.details.find((x) => x.id === el.dataset.id); if (d) itemSheet({ ...d, group: d.section === 'INCOME' ? 'INCOME_ENTRIES' : d.group }) },
   toggle: (el) => { const d = cur()?.details.find((x) => x.id === el.dataset.id); if (d) return updateItem(d.id, { paid: !d.paid }) },
@@ -427,6 +551,19 @@ sheet().addEventListener('submit', (e) => {
   if (!b) return
   if (f.get('form') === 'rate') {
     void save({ ...b, exchangeRate: parseAmount(String(f.get('eur'))), usdRate: parseAmount(String(f.get('usd'))), trBalanceTRY: parseAmount(String(f.get('balance'))) })
+    return
+  }
+  if (f.get('form') === 'cat-limit') {
+    const cat = String(f.get('cat')).trim()
+    const limitVal = parseAmount(String(f.get('limit')))
+    const limits = { ...(b.categoryLimits || {}) }
+    if (limitVal > 0) {
+      limits[cat] = limitVal
+    } else {
+      delete limits[cat]
+    }
+    sheet().close()
+    void save({ ...b, categoryLimits: limits })
     return
   }
   if (f.get('form') !== 'item') return

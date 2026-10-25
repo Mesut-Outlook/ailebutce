@@ -129,6 +129,7 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 .g-TURKIYE h2::before { background: var(--lira); }
 .g-HOLLANDA h2::before { background: var(--delft); }
 .g-INCOME_ENTRIES h2::before { background: var(--ok); }
+.g-CATS h2::before { background: var(--warn); }
 .group .total { margin-left: auto; font-weight: 700; }
 .group .progress { flex-basis: 100%; font-size: 13px; color: var(--muted); padding-left: 12px; }
 
@@ -169,26 +170,93 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 }
 .add-row svg { width: 18px; height: 18px; }
 
+/* --- Kategori Dağılımı ve Rozetler -------------------------------------- */
+
+.cat-btn {
+  display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+  padding: 12px 14px;
+}
+.cat-top {
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.cat-top .name { font-weight: 600; font-size: 15px; }
+.cat-top .amt { font-weight: 700; font-size: 15px; }
+.cat-bar-wrap {
+  width: 100%; height: 5px; border-radius: 99px; background: var(--line); overflow: hidden;
+}
+.cat-bar {
+  display: block; height: 100%; border-radius: 99px; background: var(--delft);
+  transition: width .25s ease-out;
+}
+.cat-bar.over { background: var(--lira); }
+.cat-bottom {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px;
+}
+.cat-badges { display: flex; align-items: center; gap: 6px; }
+.cat-pct { font-weight: 600; color: var(--muted); }
+
+.badge {
+  display: inline-flex; align-items: center; font-size: 11px; font-weight: 600;
+  padding: 2px 7px; border-radius: 6px;
+}
+.badge.warn {
+  background: color-mix(in srgb, var(--lira) 14%, transparent); color: var(--lira);
+}
+.badge.ok {
+  background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok);
+}
+.badge.hint {
+  background: var(--paper); color: var(--muted); border: 1px dashed var(--line);
+}
+
 /* --- Boş ay ------------------------------------------------------------- */
 
 .empty { padding: 48px 8px; }
 .empty h2 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 8px; }
 .empty p { color: var(--muted); max-width: 40ch; margin: 0 0 20px; }
 
-/* --- Geçmiş ------------------------------------------------------------- */
+/* --- Yıllık Karşılaştırma / Geçmiş --------------------------------------- */
 
-.year { margin-bottom: 28px; }
-.year header { padding: 0 4px 10px; }
-.year h2 { margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.03em; }
-.year header p { margin: 0; color: var(--muted); }
-.year header b { color: var(--lira); }
-.year ul { list-style: none; margin: 0; padding: 0; background: var(--card); border-radius: var(--radius); }
-.year li + li { border-top: 1px solid var(--line); }
-.hist-row { width: 100%; display: grid; grid-template-columns: 70px 1fr auto; align-items: center; gap: 12px; padding: 14px 14px; text-align: left; }
-.hist-month { font-weight: 700; }
-.hist-row .bar { height: 8px; }
-.hist-nums { display: grid; text-align: right; font-size: 13px; color: var(--muted); }
-.hist-nums .tr-text { font-size: 15px; font-weight: 700; color: var(--lira); }
+.year-summary { margin: 12px 0 20px; }
+.year-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.year-cards .card {
+  background: var(--card); padding: 12px 10px; border-radius: 14px; display: grid; gap: 4px;
+}
+.card-label { font-size: 12px; color: var(--muted); font-weight: 600; }
+.card-val { font-size: 15px; font-weight: 700; }
+.card-val.tr-text { color: var(--lira); }
+.card-val.neg { color: var(--lira); }
+
+.year-foot {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 4px 0; font-size: 13px; color: var(--muted);
+}
+.year-foot b { color: var(--lira); }
+
+.year-table-sec { margin-top: 22px; }
+.year-table-sec h2::before { background: var(--delft); }
+.year-table {
+  list-style: none; margin: 0; padding: 0; background: var(--card);
+  border-radius: var(--radius); overflow: hidden;
+}
+.year-row { display: flex; align-items: center; }
+.year-row + .year-row { border-top: 1px solid var(--line); }
+
+.hist-row-btn {
+  width: 100%; display: grid; grid-template-columns: 75px 1fr auto; align-items: center; gap: 12px;
+  padding: 13px 14px; text-align: left;
+}
+.hist-row-btn:active { background: var(--paper); }
+.hist-month { font-weight: 700; font-size: 15px; }
+.hist-row-btn .bar { height: 8px; }
+.val-main { font-weight: 700; font-size: 15px; }
+.val-sub { font-size: 12px; color: var(--muted); display: block; }
+.val-sub.neg { color: var(--lira); font-weight: 600; }
+
+.empty-row .hist-month { color: var(--muted); font-weight: 500; }
+.empty-bar-wrap { display: flex; align-items: center; width: 100%; }
+.empty-bar { width: 100%; height: 1px; border-bottom: 1px dashed var(--line); }
+.empty-text { font-size: 13px; color: var(--muted); font-style: italic; }
 
 /* --- Alt sekmeler -------------------------------------------------------- */
 
