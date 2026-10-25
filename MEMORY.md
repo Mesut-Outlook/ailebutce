@@ -60,12 +60,14 @@ BudgetRecord {
 
 ---
 
-## 📋 Sabit Gider Referans Verileri (Hollanda)
+## 📋 Sabit Gider Referans Verileri (Hollanda - Ekim 2026 Teyitli)
 
-- **Krediler:** ABN AMRO, Freo
-- **Faturalar:** Vodafone, Ziggo, Vattenfall
-- **Sigortalar:** Zilveren Kruis, ANWB, ABN AMRO Verzekering, Voogd & Voogd, Reaal
-- **Vergiler:** Belastingdienst, Waterschap Amstel Gooi en Vecht
+- **Krediler (2 kalem, 1.683,01 €):** ABN AMRO Hypotheek (1.388,17 €), Freo (294,84 €)
+- **Faturalar & Abonelikler (5 kalem, 382,39 €):** Vattenfall Klantenservice (226,00 €), Vattenfall Customer Solutions (31,64 €), Ziggo (30,99 €), Vodafone (81,00 €), The Rent Company (12,76 €)
+- **Sigortalar (5 kalem, 668,36 €):** Zilveren Kruis (373,32 €), ABN AMRO Schadeverzekering (205,82 €), Voogd & Voogd (28,89 €), Reaal (28,07 €), OHRA Schadeverzekeringen (32,26 €)
+- **Yerel Vergiler (3 kalem, 311,79 €):** Belastingdienst MRB (120,00 €), Gemeente Amsterdam (120,84 €), Waterschap Amstel Gooi en Vecht (70,95 €)
+- **Düzenli Birikim & Kart:** Jongerengroeirekening (20,00 € / ay), ICS Kredi Kartı Ekstresi (Ekim döngüsü: 906,85 €, değişken)
+- Detaylı döküm ve ödeme günleri için: `FixedExpences.md`
 
 ---
 
