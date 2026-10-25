@@ -8,14 +8,29 @@ import { dirname, resolve } from 'path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-// Config - read from .env manually
-const envContent = readFileSync(resolve(__dirname, '../.env'), 'utf-8')
+// Config - read from process.env or .env
+let envContent = ''
+try {
+  envContent = readFileSync(resolve(__dirname, '../.env'), 'utf-8')
+} catch {
+  // .env yoksa process.env kullanılabilir
+}
 const getEnvVar = (key) => {
+  if (process.env[key]) return process.env[key]
   const match = envContent.match(new RegExp(`^${key}=(.+)$`, 'm'))
   return match ? match[1].trim() : null
 }
 
-const firebaseConfig = JSON.parse(getEnvVar('VITE_FIREBASE_CONFIG') || '{}')
+const defaultConfig = {
+  apiKey: "AIzaSyCDFIlzyjURZZ4zdIwkwEiulWReu7cJBls",
+  authDomain: "ailebutce-45992.firebaseapp.com",
+  projectId: "ailebutce-45992",
+  storageBucket: "ailebutce-45992.firebasestorage.app",
+  messagingSenderId: "530357993119",
+  appId: "1:530357993119:web:16229fa86c5f0ee3392caa"
+}
+
+const firebaseConfig = JSON.parse(getEnvVar('VITE_FIREBASE_CONFIG') || JSON.stringify(defaultConfig))
 const email = getEnvVar('VITE_TEST_USER_EMAIL')
 const password = getEnvVar('VITE_TEST_USER_PASSWORD')
 const appId = getEnvVar('VITE_APP_ID') || 'aile-butce'
